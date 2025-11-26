@@ -26,14 +26,14 @@ class GTR_Admin {
     }
 
     /**
-     * Handle admin actions (delete, export)
+     * Handle admin actions (delete, export, bulk delete)
      */
     public function handle_admin_actions() {
         if (!current_user_can('manage_options')) {
             return;
         }
 
-        // Handle delete action
+        // Handle delete single registration
         if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
             if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_delete_registration')) {
                 wp_die('Security check failed');
@@ -42,7 +42,25 @@ class GTR_Admin {
             $id = intval($_GET['id']);
             GTR_Database::delete_registration($id);
 
-            wp_redirect(admin_url('admin.php?page=go-tournament-registration&deleted=1'));
+            $redirect_url = admin_url('admin.php?page=go-tournament-registration&deleted=1');
+            if (isset($_GET['tournament'])) {
+                $redirect_url = add_query_arg('tournament', sanitize_text_field($_GET['tournament']), $redirect_url);
+            }
+
+            wp_redirect($redirect_url);
+            exit;
+        }
+
+        // Handle bulk delete by tournament
+        if (isset($_GET['action']) && $_GET['action'] === 'delete_all' && isset($_GET['tournament'])) {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_delete_all_tournament')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_slug = sanitize_text_field($_GET['tournament']);
+            $count = GTR_Database::delete_all_by_tournament($tournament_slug);
+
+            wp_redirect(admin_url('admin.php?page=go-tournament-registration&deleted_all=' . $count));
             exit;
         }
 
@@ -52,7 +70,8 @@ class GTR_Admin {
                 wp_die('Security check failed');
             }
 
-            $this->export_csv();
+            $tournament_filter = isset($_GET['tournament']) ? sanitize_text_field($_GET['tournament']) : null;
+            $this->export_csv($tournament_filter);
             exit;
         }
     }
@@ -61,7 +80,19 @@ class GTR_Admin {
      * Render admin page
      */
     public function render_admin_page() {
-        $registrations = GTR_Database::get_all_registrations();
+        // Get all tournaments
+        $all_tournaments = GTR_Database::get_all_tournaments();
+
+        // Always require a tournament to be selected
+        // Default to first tournament if none specified
+        $tournament_filter = isset($_GET['tournament']) ? sanitize_text_field($_GET['tournament']) : null;
+
+        if (empty($tournament_filter) && !empty($all_tournaments)) {
+            $tournament_filter = $all_tournaments[0];
+        }
+
+        // Get registrations for the selected tournament only
+        $registrations = !empty($tournament_filter) ? GTR_Database::get_all_registrations($tournament_filter) : array();
         $countries = GTR_Form_Handler::get_country_list();
 
         ?>
@@ -74,25 +105,64 @@ class GTR_Admin {
                 </div>
             <?php endif; ?>
 
-            <div class="gtr-admin-actions">
-                <a
-                    href="<?php echo wp_nonce_url(admin_url('admin.php?page=go-tournament-registration&action=export_csv'), 'gtr_export_csv'); ?>"
-                    class="button button-primary"
-                >
-                    Export to CSV
-                </a>
-                <span class="gtr-total-count">
-                    Total Registrations: <strong><?php echo count($registrations); ?></strong>
-                </span>
-            </div>
+            <?php if (isset($_GET['deleted_all'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><?php echo intval($_GET['deleted_all']); ?> registration(s) deleted successfully.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (empty($all_tournaments)): ?>
+                <div class="notice notice-warning">
+                    <p>No tournaments found. Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament"]</code> and have someone register to see data here.</p>
+                </div>
+            <?php else: ?>
+                <div class="gtr-admin-filters" style="margin: 20px 0; display: flex; align-items: center; gap: 15px;">
+                    <label for="tournament-filter">Select Tournament:</label>
+                    <select id="tournament-filter" onchange="window.location.href=this.value;" style="min-width: 200px;">
+                        <?php foreach ($all_tournaments as $tournament): ?>
+                            <option value="<?php echo admin_url('admin.php?page=go-tournament-registration&tournament=' . urlencode($tournament)); ?>" <?php selected($tournament_filter, $tournament); ?>>
+                                <?php echo esc_html($tournament); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($tournament_filter): ?>
+                <div class="gtr-admin-actions" style="margin: 20px 0; display: flex; align-items: center; gap: 15px;">
+                    <?php
+                    $export_url = add_query_arg('tournament', $tournament_filter, admin_url('admin.php?page=go-tournament-registration&action=export_csv'));
+                    ?>
+                    <a href="<?php echo wp_nonce_url($export_url, 'gtr_export_csv'); ?>" class="button button-primary">
+                        Export to CSV
+                    </a>
+
+                    <?php if (!empty($registrations)): ?>
+                        <a
+                            href="<?php echo wp_nonce_url(admin_url('admin.php?page=go-tournament-registration&action=delete_all&tournament=' . urlencode($tournament_filter)), 'gtr_delete_all_tournament'); ?>"
+                            class="button button-secondary"
+                            onclick="return confirm('Are you sure you want to delete ALL <?php echo count($registrations); ?> registration(s) for tournament \'<?php echo esc_js($tournament_filter); ?>\'? This cannot be undone!');"
+                            style="background: #dc3545; border-color: #dc3545; color: white;"
+                        >
+                            Delete All Registrations
+                        </a>
+                    <?php endif; ?>
+
+                    <span class="gtr-total-count">
+                        Tournament: <strong><?php echo esc_html($tournament_filter); ?></strong> -
+                        Total: <strong><?php echo count($registrations); ?></strong> registration(s)
+                    </span>
+                </div>
+            <?php endif; ?>
 
             <?php if (empty($registrations)): ?>
-                <p>No registrations yet.</p>
+                <p>No registrations<?php echo $tournament_filter ? ' for this tournament' : ''; ?>.</p>
             <?php else: ?>
                 <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Tournament</th>
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>Player Strength</th>
@@ -108,6 +178,7 @@ class GTR_Admin {
                         <?php foreach ($registrations as $registration): ?>
                             <tr>
                                 <td><?php echo esc_html($registration->id); ?></td>
+                                <td><strong><?php echo esc_html($registration->tournament_slug); ?></strong></td>
                                 <td><?php echo esc_html($registration->first_name); ?></td>
                                 <td><?php echo esc_html($registration->last_name); ?></td>
                                 <td><?php echo esc_html($registration->player_strength); ?></td>
@@ -117,8 +188,14 @@ class GTR_Admin {
                                 <td><?php echo esc_html($registration->phone_number); ?></td>
                                 <td><?php echo esc_html($registration->registration_date); ?></td>
                                 <td>
+                                    <?php
+                                    $delete_url = admin_url('admin.php?page=go-tournament-registration&action=delete&id=' . $registration->id);
+                                    if ($tournament_filter) {
+                                        $delete_url = add_query_arg('tournament', $tournament_filter, $delete_url);
+                                    }
+                                    ?>
                                     <a
-                                        href="<?php echo wp_nonce_url(admin_url('admin.php?page=go-tournament-registration&action=delete&id=' . $registration->id), 'gtr_delete_registration'); ?>"
+                                        href="<?php echo wp_nonce_url($delete_url, 'gtr_delete_registration'); ?>"
                                         class="button button-small button-link-delete"
                                         onclick="return confirm('Are you sure you want to delete this registration?');"
                                     >
@@ -136,12 +213,17 @@ class GTR_Admin {
 
     /**
      * Export registrations to CSV
+     * @param string|null $tournament_filter Filter by tournament (null = all)
      */
-    private function export_csv() {
-        $registrations = GTR_Database::get_all_registrations();
+    private function export_csv($tournament_filter = null) {
+        $registrations = GTR_Database::get_all_registrations($tournament_filter);
         $countries = GTR_Form_Handler::get_country_list();
 
-        $filename = 'go-tournament-registrations-' . date('Y-m-d') . '.csv';
+        $filename = 'go-tournament-registrations';
+        if ($tournament_filter) {
+            $filename .= '-' . $tournament_filter;
+        }
+        $filename .= '-' . date('Y-m-d') . '.csv';
 
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename=' . $filename);
@@ -151,6 +233,7 @@ class GTR_Admin {
         // CSV headers
         fputcsv($output, array(
             'ID',
+            'Tournament',
             'First Name',
             'Last Name',
             'Player Strength',
@@ -165,6 +248,7 @@ class GTR_Admin {
         foreach ($registrations as $registration) {
             fputcsv($output, array(
                 $registration->id,
+                $registration->tournament_slug,
                 $registration->first_name,
                 $registration->last_name,
                 $registration->player_strength,

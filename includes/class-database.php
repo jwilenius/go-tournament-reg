@@ -16,6 +16,7 @@ class GTR_Database {
 
         $sql = "CREATE TABLE $table_name (
             id mediumint(9) NOT NULL AUTO_INCREMENT,
+            tournament_slug varchar(50) NOT NULL DEFAULT 'default',
             first_name varchar(30) NOT NULL,
             last_name varchar(30) NOT NULL,
             player_strength varchar(4) NOT NULL,
@@ -25,7 +26,7 @@ class GTR_Database {
             phone_number varchar(20) NOT NULL,
             registration_date datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
             PRIMARY KEY  (id),
-            UNIQUE KEY egd_number (egd_number)
+            KEY tournament_slug (tournament_slug)
         ) $charset_collate;";
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
@@ -43,6 +44,7 @@ class GTR_Database {
         $result = $wpdb->insert(
             $table_name,
             array(
+                'tournament_slug' => sanitize_text_field($data['tournament_slug'] ?? 'default'),
                 'first_name' => sanitize_text_field($data['first_name']),
                 'last_name' => sanitize_text_field($data['last_name']),
                 'player_strength' => sanitize_text_field($data['player_strength']),
@@ -51,7 +53,7 @@ class GTR_Database {
                 'egd_number' => !empty($data['egd_number']) ? sanitize_text_field($data['egd_number']) : null,
                 'phone_number' => sanitize_text_field($data['phone_number']),
             ),
-            array('%s', '%s', '%s', '%s', '%s', '%s', '%s')
+            array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
         );
 
         return $result !== false;
@@ -59,23 +61,33 @@ class GTR_Database {
 
     /**
      * Get all registrations
+     * @param string|null $tournament_slug Filter by tournament (null = all tournaments)
      */
-    public static function get_all_registrations() {
+    public static function get_all_registrations($tournament_slug = null) {
         global $wpdb;
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        if ($tournament_slug !== null) {
+            return $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM $table_name WHERE tournament_slug = %s ORDER BY id DESC", $tournament_slug)
+            );
+        }
 
         return $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC");
     }
 
     /**
      * Get registrations for display (sorted by player strength)
+     * @param string $tournament_slug Filter by tournament
      */
-    public static function get_sorted_registrations() {
+    public static function get_sorted_registrations($tournament_slug = 'default') {
         global $wpdb;
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
-        $results = $wpdb->get_results("SELECT first_name, last_name, player_strength FROM $table_name");
+        $results = $wpdb->get_results(
+            $wpdb->prepare("SELECT first_name, last_name, player_strength FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
+        );
 
         // Sort using custom logic
         usort($results, array('GTR_Database', 'compare_player_strength'));
@@ -125,9 +137,11 @@ class GTR_Database {
     }
 
     /**
-     * Check if EGD number already exists
+     * Check if EGD number already exists in a tournament
+     * @param string $egd_number The EGD number to check
+     * @param string $tournament_slug The tournament to check within
      */
-    public static function egd_number_exists($egd_number) {
+    public static function egd_number_exists($egd_number, $tournament_slug = 'default') {
         if (empty($egd_number)) {
             return false;
         }
@@ -138,8 +152,9 @@ class GTR_Database {
 
         $count = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name WHERE egd_number = %s",
-                $egd_number
+                "SELECT COUNT(*) FROM $table_name WHERE egd_number = %s AND tournament_slug = %s",
+                $egd_number,
+                $tournament_slug
             )
         );
 
@@ -163,12 +178,46 @@ class GTR_Database {
 
     /**
      * Get registration count
+     * @param string|null $tournament_slug Filter by tournament (null = all tournaments)
      */
-    public static function get_registration_count() {
+    public static function get_registration_count($tournament_slug = null) {
         global $wpdb;
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
 
+        if ($tournament_slug !== null) {
+            return (int) $wpdb->get_var(
+                $wpdb->prepare("SELECT COUNT(*) FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
+            );
+        }
+
         return (int) $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+    }
+
+    /**
+     * Delete all registrations for a tournament
+     * @param string $tournament_slug The tournament to delete
+     */
+    public static function delete_all_by_tournament($tournament_slug) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        return $wpdb->delete(
+            $table_name,
+            array('tournament_slug' => $tournament_slug),
+            array('%s')
+        );
+    }
+
+    /**
+     * Get all distinct tournament slugs
+     */
+    public static function get_all_tournaments() {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        return $wpdb->get_col("SELECT DISTINCT tournament_slug FROM $table_name ORDER BY tournament_slug");
     }
 }

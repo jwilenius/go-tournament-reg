@@ -59,8 +59,17 @@ function gtr_init() {
 add_shortcode('go_tournament_registration', 'gtr_registration_shortcode');
 
 function gtr_registration_shortcode($atts) {
+    $atts = shortcode_atts(array(
+        'tournament' => 'default',
+        'title' => '',
+    ), $atts, 'go_tournament_registration');
+
+    // Sanitize tournament slug (lowercase, alphanumeric with hyphens only)
+    $tournament_slug = sanitize_title($atts['tournament']);
+    $title = sanitize_text_field($atts['title']);
+
     ob_start();
-    GTR_Display::render_registration_page();
+    GTR_Display::render_registration_page($tournament_slug, $title);
     return ob_get_clean();
 }
 

@@ -7,13 +7,19 @@ class GTR_Display {
 
     /**
      * Render the complete registration page (form + participant list)
+     * @param string $tournament_slug Tournament identifier
+     * @param string $title Optional title to display
      */
-    public static function render_registration_page() {
+    public static function render_registration_page($tournament_slug = 'default', $title = '') {
         echo '<div class="gtr-container">';
 
+        if (!empty($title)) {
+            echo '<h1 class="gtr-tournament-title">' . esc_html($title) . '</h1>';
+        }
+
         self::render_messages();
-        self::render_registration_form();
-        self::render_participant_list();
+        self::render_registration_form($tournament_slug);
+        self::render_participant_list($tournament_slug);
 
         echo '</div>';
     }
@@ -42,8 +48,9 @@ class GTR_Display {
 
     /**
      * Render the registration form
+     * @param string $tournament_slug Tournament identifier
      */
-    private static function render_registration_form() {
+    private static function render_registration_form($tournament_slug = 'default') {
         $form_data = get_transient('gtr_form_data');
         $errors = get_transient('gtr_form_errors');
 
@@ -58,6 +65,7 @@ class GTR_Display {
             <h2>Tournament Registration</h2>
             <form method="post" action="" class="gtr-form">
                 <?php wp_nonce_field('gtr_registration_form', 'gtr_nonce'); ?>
+                <input type="hidden" name="tournament_slug" value="<?php echo esc_attr($tournament_slug); ?>" />
 
                 <div class="gtr-form-row">
                     <div class="gtr-form-field">
@@ -173,10 +181,11 @@ class GTR_Display {
 
     /**
      * Render the participant list
+     * @param string $tournament_slug Tournament identifier
      */
-    private static function render_participant_list() {
-        $participants = GTR_Database::get_sorted_registrations();
-        $count = GTR_Database::get_registration_count();
+    private static function render_participant_list($tournament_slug = 'default') {
+        $participants = GTR_Database::get_sorted_registrations($tournament_slug);
+        $count = GTR_Database::get_registration_count($tournament_slug);
 
         ?>
         <div class="gtr-participant-list">

@@ -29,13 +29,6 @@ class GTR_Form_Handler {
             return;
         }
 
-        // Check for duplicate EGD number
-        if (!empty($_POST['egd_number']) && GTR_Database::egd_number_exists($_POST['egd_number'])) {
-            set_transient('gtr_form_errors', array('egd_number' => 'This EGD number is already registered.'), 45);
-            set_transient('gtr_form_data', $_POST, 45);
-            return;
-        }
-
         // Insert registration
         $success = GTR_Database::insert_registration($_POST);
 
