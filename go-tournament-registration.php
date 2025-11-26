@@ -4,8 +4,7 @@
  * Plugin URI: https://github.com/yourusername/go-tournament-registration
  * Description: A WordPress plugin for managing Go tournament player registrations with player strength sorting and participant display.
  * Version: 1.0.0
- * Author: Your Name
- * Author URI: https://yourwebsite.com
+ * Author: Jim Wilenius
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: go-tournament-reg
