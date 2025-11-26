@@ -3,6 +3,11 @@
  * Admin panel for Go Tournament Registration
  */
 
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class GTR_Admin {
 
     public function __construct() {
@@ -80,6 +85,11 @@ class GTR_Admin {
      * Render admin page
      */
     public function render_admin_page() {
+        // Check user capabilities
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
         // Get all tournaments
         $all_tournaments = GTR_Database::get_all_tournaments();
 
@@ -120,7 +130,7 @@ class GTR_Admin {
                     <label for="tournament-filter">Select Tournament:</label>
                     <select id="tournament-filter" onchange="window.location.href=this.value;" style="min-width: 200px;">
                         <?php foreach ($all_tournaments as $tournament): ?>
-                            <option value="<?php echo admin_url('admin.php?page=go-tournament-registration&tournament=' . urlencode($tournament)); ?>" <?php selected($tournament_filter, $tournament); ?>>
+                            <option value="<?php echo esc_url(admin_url('admin.php?page=go-tournament-registration&tournament=' . urlencode($tournament))); ?>" <?php selected($tournament_filter, $tournament); ?>>
                                 <?php echo esc_html($tournament); ?>
                             </option>
                         <?php endforeach; ?>
@@ -141,7 +151,7 @@ class GTR_Admin {
                         <a
                             href="<?php echo wp_nonce_url(admin_url('admin.php?page=go-tournament-registration&action=delete_all&tournament=' . urlencode($tournament_filter)), 'gtr_delete_all_tournament'); ?>"
                             class="button button-secondary"
-                            onclick="return confirm('Are you sure you want to delete ALL <?php echo count($registrations); ?> registration(s) for tournament \'<?php echo esc_js($tournament_filter); ?>\'? This cannot be undone!');"
+                            onclick="return confirm('Are you sure you want to delete ALL <?php echo intval(count($registrations)); ?> registration(s) for tournament \'<?php echo esc_js($tournament_filter); ?>\'? This cannot be undone!');"
                             style="background: #dc3545; border-color: #dc3545; color: white;"
                         >
                             Delete All Registrations
@@ -216,6 +226,11 @@ class GTR_Admin {
      * @param string|null $tournament_filter Filter by tournament (null = all)
      */
     private function export_csv($tournament_filter = null) {
+        // Check user capabilities
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
         $registrations = GTR_Database::get_all_registrations($tournament_filter);
         $countries = GTR_Form_Handler::get_country_list();
 

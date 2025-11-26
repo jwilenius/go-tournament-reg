@@ -3,6 +3,11 @@
  * Display handler for Go Tournament Registration
  */
 
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class GTR_Display {
 
     /**

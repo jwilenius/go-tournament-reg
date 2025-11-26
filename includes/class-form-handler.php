@@ -3,6 +3,11 @@
  * Form handler for Go Tournament Registration
  */
 
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class GTR_Form_Handler {
 
     public function __construct() {

@@ -3,6 +3,11 @@
  * Database operations for Go Tournament Registration
  */
 
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class GTR_Database {
 
     /**
