@@ -1,0 +1,5 @@
+# Exclude development files from git archive (used for distribution ZIP)
+.git* export-ignore
+.github/ export-ignore
+docker-compose.yml export-ignore
+.env export-ignore
