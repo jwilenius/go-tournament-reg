@@ -18,3 +18,10 @@
 wp-admin/
 wp-includes/
 *.log
+
+# Composer
+/vendor/
+/composer.lock
+
+# PHPUnit
+.phpunit.result.cache

@@ -72,15 +72,48 @@ Go to WordPress Admin → Tournament Registration
 - PHP 7.4 or higher
 - MySQL 5.6 or higher
 
+## Development
+
+### Prerequisites
+
+- PHP 7.4 or higher
+- [Composer](https://getcomposer.org/) - Install via Homebrew: `brew install composer`
+
+### Setup
+
+```bash
+# Install dependencies
+composer install
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+./vendor/bin/phpunit
+
+# Run tests with verbose output
+./vendor/bin/phpunit --testdox
+```
+
+### Building Distribution ZIP
+
+```bash
+./build.sh
+```
+
+This creates a WordPress-installable ZIP file. Development files (tests, composer files, etc.) are automatically excluded.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Run tests to ensure everything works: `composer test`
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
 ## License
 

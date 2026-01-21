@@ -5,3 +5,9 @@ docker-compose.yml export-ignore
 .env export-ignore
 junk/ export-ignore
 build.sh export-ignore
+tests/ export-ignore
+phpunit.xml export-ignore
+composer.json export-ignore
+composer.lock export-ignore
+vendor/ export-ignore
+security-review.md export-ignore
