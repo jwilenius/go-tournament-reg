@@ -167,6 +167,31 @@ class GTR_Database {
     }
 
     /**
+     * Check if email already exists in a tournament
+     * @param string $email The email to check
+     * @param string $tournament_slug The tournament to check within
+     */
+    public static function email_exists($email, $tournament_slug = 'default') {
+        if (empty($email)) {
+            return false;
+        }
+
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM $table_name WHERE email = %s AND tournament_slug = %s",
+                $email,
+                $tournament_slug
+            )
+        );
+
+        return $count > 0;
+    }
+
+    /**
      * Delete a registration by ID
      */
     public static function delete_registration($id) {

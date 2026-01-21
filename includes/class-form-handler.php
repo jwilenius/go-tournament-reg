@@ -15,6 +15,23 @@ class GTR_Form_Handler {
     }
 
     /**
+     * Check rate limit for form submissions
+     * @return bool True if within limit, false if rate limited
+     */
+    private function check_rate_limit() {
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown';
+        $transient_key = 'gtr_rate_' . md5($ip);
+        $attempts = get_transient($transient_key);
+
+        if ($attempts !== false && $attempts >= 5) {
+            return false; // Rate limited: 5 submissions per 10 minutes
+        }
+
+        set_transient($transient_key, ($attempts ?: 0) + 1, 600);
+        return true;
+    }
+
+    /**
      * Handle form submission
      */
     public function handle_form_submission() {
@@ -26,11 +43,28 @@ class GTR_Form_Handler {
             wp_die('Security check failed');
         }
 
+        // Check rate limit
+        if (!$this->check_rate_limit()) {
+            set_transient('gtr_form_errors', array('rate_limit' => 'Too many submissions. Please try again later.'), 45);
+            return;
+        }
+
         $errors = $this->validate_form_data($_POST);
 
         if (!empty($errors)) {
             set_transient('gtr_form_errors', $errors, 45);
-            set_transient('gtr_form_data', $_POST, 45);
+            // Store sanitized form data in transient (not raw $_POST)
+            $sanitized_data = array(
+                'tournament_slug' => sanitize_text_field($_POST['tournament_slug'] ?? ''),
+                'first_name' => sanitize_text_field($_POST['first_name'] ?? ''),
+                'last_name' => sanitize_text_field($_POST['last_name'] ?? ''),
+                'player_strength' => sanitize_text_field($_POST['player_strength'] ?? ''),
+                'country' => sanitize_text_field($_POST['country'] ?? ''),
+                'email' => sanitize_email($_POST['email'] ?? ''),
+                'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
+                'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
+            );
+            set_transient('gtr_form_data', $sanitized_data, 45);
             return;
         }
 
@@ -39,12 +73,27 @@ class GTR_Form_Handler {
 
         if ($success) {
             set_transient('gtr_form_success', 'Registration successful!', 45);
-            // Redirect to prevent form resubmission
-            wp_redirect(add_query_arg('registered', '1', wp_get_referer()));
+            // Redirect to prevent form resubmission (validate redirect URL to prevent open redirect)
+            $referer = wp_get_referer();
+            $redirect_url = ($referer && wp_validate_redirect($referer, false))
+                ? add_query_arg('registered', '1', $referer)
+                : add_query_arg('registered', '1', home_url());
+            wp_redirect($redirect_url);
             exit;
         } else {
             set_transient('gtr_form_errors', array('database' => 'Failed to save registration. Please try again.'), 45);
-            set_transient('gtr_form_data', $_POST, 45);
+            // Store sanitized form data in transient (not raw $_POST)
+            $sanitized_data = array(
+                'tournament_slug' => sanitize_text_field($_POST['tournament_slug'] ?? ''),
+                'first_name' => sanitize_text_field($_POST['first_name'] ?? ''),
+                'last_name' => sanitize_text_field($_POST['last_name'] ?? ''),
+                'player_strength' => sanitize_text_field($_POST['player_strength'] ?? ''),
+                'country' => sanitize_text_field($_POST['country'] ?? ''),
+                'email' => sanitize_email($_POST['email'] ?? ''),
+                'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
+                'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
+            );
+            set_transient('gtr_form_data', $sanitized_data, 45);
         }
     }
 
@@ -92,7 +141,16 @@ class GTR_Form_Handler {
             $errors['phone_number'] = 'Phone number is required.';
         }
 
-        // EGD number is optional, no validation needed if empty
+        // EGD number length validation (optional field, but enforce max length if provided)
+        if (!empty($data['egd_number']) && strlen($data['egd_number']) > 20) {
+            $errors['egd_number'] = 'EGD number must be 20 characters or less.';
+        }
+
+        // Check for duplicate email in the same tournament
+        $tournament_slug = sanitize_text_field($data['tournament_slug'] ?? 'default');
+        if (!isset($errors['email']) && GTR_Database::email_exists($data['email'], $tournament_slug)) {
+            $errors['email'] = 'This email is already registered for this tournament.';
+        }
 
         return $errors;
     }

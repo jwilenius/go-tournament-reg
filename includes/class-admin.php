@@ -222,6 +222,20 @@ class GTR_Admin {
     }
 
     /**
+     * Sanitize a field for CSV export to prevent formula injection
+     * @param mixed $field The field value to sanitize
+     * @return string Sanitized field value
+     */
+    private function sanitize_csv_field($field) {
+        $field = (string) $field;
+        // Prefix cells starting with =, +, -, @, tab, or carriage return to prevent formula injection
+        if (preg_match('/^[\t\r=+\-@]/', $field)) {
+            $field = "'" . $field;
+        }
+        return $field;
+    }
+
+    /**
      * Export registrations to CSV
      * @param string|null $tournament_filter Filter by tournament (null = all)
      */
@@ -241,7 +255,8 @@ class GTR_Admin {
         $filename .= '-' . date('Y-m-d') . '.csv';
 
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename=' . $filename);
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
 
         $output = fopen('php://output', 'w');
 
@@ -259,19 +274,19 @@ class GTR_Admin {
             'Registration Date'
         ));
 
-        // CSV data
+        // CSV data (sanitized to prevent formula injection)
         foreach ($registrations as $registration) {
             fputcsv($output, array(
-                $registration->id,
-                $registration->tournament_slug,
-                $registration->first_name,
-                $registration->last_name,
-                $registration->player_strength,
-                $countries[$registration->country] ?? $registration->country,
-                $registration->email,
-                $registration->egd_number ?? '',
-                $registration->phone_number,
-                $registration->registration_date
+                $this->sanitize_csv_field($registration->id),
+                $this->sanitize_csv_field($registration->tournament_slug),
+                $this->sanitize_csv_field($registration->first_name),
+                $this->sanitize_csv_field($registration->last_name),
+                $this->sanitize_csv_field($registration->player_strength),
+                $this->sanitize_csv_field($countries[$registration->country] ?? $registration->country),
+                $this->sanitize_csv_field($registration->email),
+                $this->sanitize_csv_field($registration->egd_number ?? ''),
+                $this->sanitize_csv_field($registration->phone_number),
+                $this->sanitize_csv_field($registration->registration_date)
             ));
         }
 
