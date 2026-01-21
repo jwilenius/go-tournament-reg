@@ -4,6 +4,8 @@
  * Plugin URI: https://github.com/jwilenius/go-tournament-reg
  * Description: A WordPress plugin for managing Go tournament player registrations with player strength sorting and participant display.
  * Version: 1.0.0
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
  * Author: Jim Wilenius
  * Author URI: https://github.com/jwilenius
  * License: GPL v2 or later
