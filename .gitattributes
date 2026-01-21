@@ -3,3 +3,5 @@
 .github/ export-ignore
 docker-compose.yml export-ignore
 .env export-ignore
+junk/ export-ignore
+build.sh export-ignore
