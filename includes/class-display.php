@@ -73,6 +73,7 @@ class GTR_Display {
             <form method="post" action="" class="gtr-form">
                 <?php wp_nonce_field('gtr_registration_form', 'gtr_nonce'); ?>
                 <input type="hidden" name="tournament_slug" value="<?php echo esc_attr($tournament_slug); ?>" />
+                <input type="hidden" name="gtr_redirect_url" value="<?php echo esc_url(get_permalink()); ?>" />
 
                 <div class="gtr-form-row">
                     <div class="gtr-form-field">
@@ -226,7 +227,7 @@ class GTR_Display {
         $count = GTR_Database::get_registration_count($tournament_slug);
 
         ?>
-        <div class="gtr-participant-list">
+        <div id="gtr-participants" class="gtr-participant-list">
             <h2>Registered Participants</h2>
             <p class="gtr-count">Total registered: <strong><?php echo esc_html($count); ?></strong></p>
 

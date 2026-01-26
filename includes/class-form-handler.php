@@ -76,11 +76,17 @@ class GTR_Form_Handler {
 
         if ($success) {
             set_transient('gtr_form_success', 'Registration successful!', 45);
-            // Redirect to prevent form resubmission (validate redirect URL to prevent open redirect)
-            $referer = wp_get_referer();
-            $redirect_url = ($referer && wp_validate_redirect($referer, false))
-                ? add_query_arg('registered', '1', $referer)
-                : add_query_arg('registered', '1', home_url());
+            // Redirect to prevent form resubmission (use hidden field, fallback to referer)
+            $redirect_url = '';
+            if (!empty($_POST['gtr_redirect_url'])) {
+                $redirect_url = esc_url_raw($_POST['gtr_redirect_url']);
+            }
+            if (empty($redirect_url) || !wp_validate_redirect($redirect_url, false)) {
+                $referer = wp_get_referer();
+                $redirect_url = ($referer && wp_validate_redirect($referer, false)) ? $referer : home_url();
+            }
+            // Add anchor to scroll to participant list
+            $redirect_url = add_query_arg('registered', '1', $redirect_url) . '#gtr-participants';
             wp_redirect($redirect_url);
             exit;
         } else {
