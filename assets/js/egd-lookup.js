@@ -155,6 +155,8 @@
 
         function selectPlayer(player) {
             var fields = {
+                'first_name': player.first_name,
+                'last_name': player.last_name,
                 'egd_number': player.pin,
                 'player_strength': player.strength,
                 'country': player.country
