@@ -79,6 +79,30 @@ class GTR_Admin {
             $this->export_csv($tournament_filter);
             exit;
         }
+
+        // Handle OpenGotha XML export
+        if (isset($_GET['action']) && $_GET['action'] === 'export_opengotha') {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_export_opengotha')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_filter = isset($_GET['tournament']) ? sanitize_text_field($_GET['tournament']) : null;
+            $tournament_rounds = $tournament_filter ? GTR_Database::get_tournament_rounds($tournament_filter) : 0;
+            $this->export_opengotha($tournament_filter, $tournament_rounds);
+            exit;
+        }
+
+        // Handle MacMahon export
+        if (isset($_GET['action']) && $_GET['action'] === 'export_macmahon') {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_export_macmahon')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_filter = isset($_GET['tournament']) ? sanitize_text_field($_GET['tournament']) : null;
+            $tournament_rounds = $tournament_filter ? GTR_Database::get_tournament_rounds($tournament_filter) : 0;
+            $this->export_macmahon($tournament_filter, $tournament_rounds);
+            exit;
+        }
     }
 
     /**
@@ -122,8 +146,8 @@ class GTR_Admin {
             <?php endif; ?>
 
             <div class="notice notice-info">
-                <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament"]</code> to add a registration form.</p>
-                <p>Add <code>rounds="N"</code> to let participants select which rounds they'll play (e.g., <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code>).</p>
+                <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament" rounds="N"]</code> to add a registration form.</p>
+                <p>Example: <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code></p>
             </div>
 
             <?php if (empty($all_tournaments)): ?>
@@ -144,12 +168,20 @@ class GTR_Admin {
             <?php endif; ?>
 
             <?php if ($tournament_filter): ?>
-                <div class="gtr-admin-actions" style="margin: 20px 0; display: flex; align-items: center; gap: 15px;">
+                <div class="gtr-admin-actions" style="margin: 20px 0; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <?php
-                    $export_url = add_query_arg('tournament', $tournament_filter, admin_url('admin.php?page=go-tournament-registration&action=export_csv'));
+                    $export_csv_url = add_query_arg('tournament', $tournament_filter, admin_url('admin.php?page=go-tournament-registration&action=export_csv'));
+                    $export_opengotha_url = add_query_arg('tournament', $tournament_filter, admin_url('admin.php?page=go-tournament-registration&action=export_opengotha'));
+                    $export_macmahon_url = add_query_arg('tournament', $tournament_filter, admin_url('admin.php?page=go-tournament-registration&action=export_macmahon'));
                     ?>
-                    <a href="<?php echo wp_nonce_url($export_url, 'gtr_export_csv'); ?>" class="button button-primary">
+                    <a href="<?php echo wp_nonce_url($export_csv_url, 'gtr_export_csv'); ?>" class="button button-primary">
                         Export to CSV
+                    </a>
+                    <a href="<?php echo wp_nonce_url($export_opengotha_url, 'gtr_export_opengotha'); ?>" class="button button-secondary">
+                        Export for OpenGotha
+                    </a>
+                    <a href="<?php echo wp_nonce_url($export_macmahon_url, 'gtr_export_macmahon'); ?>" class="button button-secondary">
+                        Export for MacMahon
                     </a>
 
                     <?php if (!empty($registrations)): ?>
@@ -304,5 +336,135 @@ class GTR_Admin {
         }
 
         fclose($output);
+    }
+
+    /**
+     * Convert player strength to OpenGotha rank format (e.g., "3d" -> "3D", "5k" -> "5K")
+     * @param string $strength Player strength
+     * @return string OpenGotha rank format
+     */
+    private function strength_to_rank($strength) {
+        $strength = strtolower(trim($strength));
+        if (preg_match('/^(\d+)\s*([dk])$/i', $strength, $matches)) {
+            return $matches[1] . strtoupper($matches[2]);
+        }
+        return $strength;
+    }
+
+    /**
+     * Convert rounds string to binary participation format
+     * @param string|null $rounds Comma-separated rounds (e.g., "1,2,4")
+     * @param int $total_rounds Total number of rounds
+     * @return string Binary string (e.g., "1101" for rounds 1,2,4 of 4)
+     */
+    private function rounds_to_binary($rounds, $total_rounds) {
+        if (empty($rounds) || $total_rounds <= 0) {
+            return str_repeat('1', max($total_rounds, 1));
+        }
+
+        $selected = array_map('intval', explode(',', $rounds));
+        $binary = '';
+        for ($i = 1; $i <= $total_rounds; $i++) {
+            $binary .= in_array($i, $selected) ? '1' : '0';
+        }
+        return $binary;
+    }
+
+    /**
+     * Export registrations to OpenGotha XML format
+     * @param string|null $tournament_filter Filter by tournament
+     * @param int $total_rounds Total number of rounds in the tournament
+     */
+    private function export_opengotha($tournament_filter = null, $total_rounds = 0) {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        $registrations = GTR_Database::get_all_registrations($tournament_filter);
+
+        $filename = 'opengotha';
+        if ($tournament_filter) {
+            $filename .= '-' . $tournament_filter;
+        }
+        $filename .= '-' . date('Y-m-d') . '.xml';
+
+        header('Content-Type: application/xml; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->formatOutput = true;
+
+        $tournament = $dom->createElement('Tournament');
+        $dom->appendChild($tournament);
+
+        $players = $dom->createElement('Players');
+        $tournament->appendChild($players);
+
+        foreach ($registrations as $registration) {
+            $player = $dom->createElement('Player');
+
+            $player->setAttribute('name', $registration->last_name);
+            $player->setAttribute('firstName', $registration->first_name);
+            $player->setAttribute('country', strtoupper($registration->country));
+            $player->setAttribute('club', '');
+            $player->setAttribute('egfPin', $registration->egd_number ?? '');
+            $player->setAttribute('rank', $this->strength_to_rank($registration->player_strength));
+            $player->setAttribute('rating', $registration->gor ?? '');
+            $player->setAttribute('ratingOrigin', $registration->gor ? 'EGF' : '');
+            $player->setAttribute('participating', $this->rounds_to_binary($registration->rounds, $total_rounds));
+            $player->setAttribute('registeringStatus', 'FIN');
+
+            $players->appendChild($player);
+        }
+
+        echo $dom->saveXML();
+    }
+
+    /**
+     * Export registrations to MacMahon text format (Gerlach's MacMahon program)
+     * Format: surname|firstname|strength|country|club|rating|registration|playinginrounds
+     * @param string|null $tournament_filter Filter by tournament
+     * @param int $total_rounds Total number of rounds in the tournament
+     */
+    private function export_macmahon($tournament_filter = null, $total_rounds = 0) {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        $registrations = GTR_Database::get_all_registrations($tournament_filter);
+
+        $filename = 'macmahon';
+        if ($tournament_filter) {
+            $filename .= '-' . $tournament_filter;
+        }
+        $filename .= '-' . date('Y-m-d') . '.txt';
+
+        header('Content-Type: text/plain; charset=utf-8');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        // Header comment
+        echo "; MacMahon import file\n";
+        echo "; Format: surname|firstname|strength|country|club|rating|registration|playinginrounds\n";
+        echo "; Generated: " . date('Y-m-d H:i:s') . "\n";
+        if ($tournament_filter) {
+            echo "; Tournament: " . $tournament_filter . "\n";
+        }
+        echo "\n";
+
+        foreach ($registrations as $registration) {
+            $fields = array(
+                $registration->last_name,
+                $registration->first_name,
+                $this->strength_to_rank($registration->player_strength),
+                strtoupper($registration->country),
+                '', // club (not collected)
+                $registration->gor ?? '',
+                'f', // registration status: final
+                $this->rounds_to_binary($registration->rounds, $total_rounds)
+            );
+            echo implode('|', $fields) . "\n";
+        }
     }
 }
