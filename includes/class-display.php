@@ -191,7 +191,8 @@ class GTR_Display {
                             <label>Rounds Participating <span class="required">*</span></label>
                             <div class="gtr-rounds-checkboxes <?php echo isset($errors['rounds']) ? 'error' : ''; ?>">
                                 <?php
-                                $selected_rounds = isset($form_data['rounds']) ? (array) $form_data['rounds'] : array();
+                                // Pre-select all rounds by default (when no form data exists)
+                                $selected_rounds = isset($form_data['rounds']) ? (array) $form_data['rounds'] : range(1, $rounds);
                                 for ($i = 1; $i <= $rounds; $i++):
                                     $checked = in_array($i, $selected_rounds) ? 'checked' : '';
                                 ?>
