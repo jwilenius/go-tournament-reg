@@ -5,6 +5,7 @@ docker-compose.yml export-ignore
 .env export-ignore
 junk/ export-ignore
 build.sh export-ignore
+start-local.sh export-ignore
 tests/ export-ignore
 phpunit.xml export-ignore
 composer.json export-ignore
