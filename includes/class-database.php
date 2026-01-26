@@ -105,7 +105,7 @@ class GTR_Database {
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
         $results = $wpdb->get_results(
-            $wpdb->prepare("SELECT first_name, last_name, player_strength FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
+            $wpdb->prepare("SELECT first_name, last_name, player_strength, country FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
         );
 
         // Sort using custom logic

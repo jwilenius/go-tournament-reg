@@ -235,10 +235,12 @@ class GTR_Display {
                 <p class="gtr-no-participants">No participants registered yet.</p>
             <?php else: ?>
                 <div class="gtr-participants">
+                    <?php $countries = GTR_Form_Handler::get_country_list(); ?>
                     <table class="gtr-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Country</th>
                                 <th>Player Strength</th>
                             </tr>
                         </thead>
@@ -246,6 +248,7 @@ class GTR_Display {
                             <?php foreach ($participants as $participant): ?>
                                 <tr>
                                     <td><?php echo esc_html($participant->first_name . ' ' . $participant->last_name); ?></td>
+                                    <td><?php echo esc_html($countries[$participant->country] ?? $participant->country); ?></td>
                                     <td class="gtr-strength"><?php echo esc_html($participant->player_strength); ?></td>
                                 </tr>
                             <?php endforeach; ?>
