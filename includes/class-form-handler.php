@@ -76,6 +76,13 @@ class GTR_Form_Handler {
         $success = GTR_Database::insert_registration($_POST);
 
         if ($success) {
+            // Store tournament rounds configuration if provided
+            $tournament_slug = sanitize_text_field($_POST['tournament_slug'] ?? 'default');
+            $tournament_rounds = isset($_POST['tournament_rounds']) ? intval($_POST['tournament_rounds']) : 0;
+            if ($tournament_rounds > 0) {
+                GTR_Database::set_tournament_rounds($tournament_slug, $tournament_rounds);
+            }
+
             set_transient('gtr_form_success', 'Registration successful!', 45);
             // Redirect to prevent form resubmission (use hidden field, fallback to referer)
             $redirect_url = '';

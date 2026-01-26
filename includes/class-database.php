@@ -272,4 +272,25 @@ class GTR_Database {
 
         return $wpdb->get_col("SELECT DISTINCT tournament_slug FROM $table_name ORDER BY tournament_slug");
     }
+
+    /**
+     * Store the number of rounds for a tournament
+     * @param string $tournament_slug Tournament identifier
+     * @param int $rounds Number of rounds
+     */
+    public static function set_tournament_rounds($tournament_slug, $rounds) {
+        $rounds = max(0, intval($rounds));
+        if ($rounds > 0) {
+            update_option('gtr_tournament_rounds_' . sanitize_key($tournament_slug), $rounds);
+        }
+    }
+
+    /**
+     * Get the number of rounds for a tournament
+     * @param string $tournament_slug Tournament identifier
+     * @return int Number of rounds (0 if not set)
+     */
+    public static function get_tournament_rounds($tournament_slug) {
+        return intval(get_option('gtr_tournament_rounds_' . sanitize_key($tournament_slug), 0));
+    }
 }
