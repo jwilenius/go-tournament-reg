@@ -8,10 +8,10 @@ WordPress plugin for managing Go tournament player registrations with automatic 
 
 - **Player strength sorting**: Dan (9d→1d) then Kyu (1k→30k)
 - **Multi-tournament support**: Run multiple independent tournaments simultaneously
-- **International support**: ISO country selection
-- **EGD integration**: Optional European Go Database number field
+- **International support**: ISO country selection with Unicode name support
+- **EGD lookup**: Search the European Go Database to auto-fill player details
 - **CSV export**: Download registration lists for tournament management
-- **Security hardened**: ABSPATH protection, capability checks, XSS protection
+- **Security hardened**: ABSPATH protection, capability checks, XSS protection, rate limiting
 
 ## Installation
 
@@ -66,6 +66,21 @@ Go to WordPress Admin → Tournament Registration
 - Export to CSV
 - Delete individual or all registrations for a tournament
 
+### EGD Player Lookup
+
+The registration form includes an "EGD Lookup" button that searches the [European Go Database](https://www.europeangodatabase.eu/):
+
+1. Enter the player's first name, last name, and/or select a country
+2. Click the "EGD Lookup" button
+3. Select a matching player from the dropdown
+4. EGD Number, Player Strength, and Country are auto-filled
+
+**Features:**
+- Supports Unicode names (e.g., Müller, José, Björk)
+- Shows up to 9 results; links to EGD website for more
+- "Not registered in EGD" option for manual entry
+- Rate limited to 10 lookups per minute per IP
+
 ## Requirements
 
 - WordPress 5.0 or higher
@@ -74,10 +89,37 @@ Go to WordPress Admin → Tournament Registration
 
 ## Development
 
+### Local Development with Docker
+
+The easiest way to test the plugin locally is using Docker:
+
+```bash
+./start-local.sh
+```
+
+This will:
+- Create a `.env` file with default database credentials (if needed)
+- Start WordPress and MySQL containers
+- Mount the plugin directory for live code changes
+
+Once running:
+1. Visit http://localhost:8080 to complete WordPress setup
+2. Go to **Plugins** and activate "Go Tournament Registration"
+3. Create a page with the shortcode `[go_tournament_registration]`
+
+**Useful commands:**
+```bash
+docker-compose logs -f      # View logs
+docker-compose stop         # Stop containers
+docker-compose down         # Stop and remove containers
+docker-compose down -v      # Stop and remove containers + all data
+```
+
 ### Prerequisites
 
 - PHP 7.4 or higher
 - [Composer](https://getcomposer.org/) - Install via Homebrew: `brew install composer`
+- [Docker](https://www.docker.com/products/docker-desktop) (for local WordPress testing)
 
 ### Setup
 
