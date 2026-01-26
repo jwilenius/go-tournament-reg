@@ -75,11 +75,24 @@ function gtr_registration_shortcode($atts) {
     return ob_get_clean();
 }
 
-// Enqueue styles
-add_action('wp_enqueue_scripts', 'gtr_enqueue_styles');
+// Enqueue styles and scripts
+add_action('wp_enqueue_scripts', 'gtr_enqueue_assets');
 
-function gtr_enqueue_styles() {
+function gtr_enqueue_assets() {
     wp_enqueue_style('gtr-styles', GTR_PLUGIN_URL . 'assets/css/styles.css', array(), GTR_VERSION);
+
+    wp_enqueue_script(
+        'gtr-egd-lookup',
+        GTR_PLUGIN_URL . 'assets/js/egd-lookup.js',
+        array(),
+        GTR_VERSION,
+        true
+    );
+
+    wp_localize_script('gtr-egd-lookup', 'gtrEgdLookup', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('gtr_egd_lookup'),
+    ));
 }
 
 // Enqueue admin styles
