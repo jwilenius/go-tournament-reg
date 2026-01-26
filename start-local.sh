@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Start local WordPress development environment with Docker
+#
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}Go Tournament Registration - Local Development${NC}"
+echo "================================================"
+
+# Check for Docker
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}Error: Docker is not installed.${NC}"
+    echo "Please install Docker Desktop: https://www.docker.com/products/docker-desktop"
+    exit 1
+fi
+
+# Check if Docker is running
+if ! docker info &> /dev/null; then
+    echo -e "${RED}Error: Docker is not running.${NC}"
+    echo "Please start Docker Desktop and try again."
+    exit 1
+fi
+
+# Create .env file if it doesn't exist
+if [ ! -f .env ]; then
+    echo -e "${YELLOW}Creating .env file with default values...${NC}"
+    cat > .env << 'EOF'
+MYSQL_DATABASE=wordpress
+MYSQL_USER=wordpress
+MYSQL_PASSWORD=wordpress
+MYSQL_ROOT_PASSWORD=rootpassword
+EOF
+    echo -e "${GREEN}.env file created${NC}"
+fi
+
+# Clean up any orphaned containers with conflicting names
+for container in wp-go-reg-db wp-go-reg-wordpress; do
+    if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+        echo -e "${YELLOW}Removing orphaned container: ${container}${NC}"
+        docker rm -f "$container" > /dev/null 2>&1 || true
+    fi
+done
+
+# Start containers
+echo -e "${YELLOW}Starting Docker containers...${NC}"
+docker-compose up -d
+
+# Wait for WordPress to be ready
+echo -e "${YELLOW}Waiting for WordPress to start...${NC}"
+MAX_ATTEMPTS=30
+ATTEMPT=0
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q "200\|302"; then
+        break
+    fi
+    ATTEMPT=$((ATTEMPT + 1))
+    echo -n "."
+    sleep 2
+done
+echo ""
+
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo -e "${YELLOW}WordPress is starting up (this may take a moment on first run)${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}Local development environment is ready!${NC}"
+echo "================================================"
+echo ""
+echo "WordPress:  http://localhost:8080"
+echo "Admin:      http://localhost:8080/wp-admin"
+echo ""
+echo -e "${YELLOW}First time setup:${NC}"
+echo "1. Visit http://localhost:8080 to complete WordPress installation"
+echo "2. Go to Plugins and activate 'Go Tournament Registration'"
+echo "3. Create a page with shortcode: [go_tournament_registration]"
+echo ""
+echo -e "${YELLOW}Useful commands:${NC}"
+echo "  docker-compose logs -f     # View logs"
+echo "  docker-compose stop        # Stop containers"
+echo "  docker-compose down        # Stop and remove containers"
+echo "  docker-compose down -v     # Stop and remove containers + data"
+echo ""
