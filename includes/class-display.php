@@ -97,8 +97,11 @@ class GTR_Display {
                             required
                             class="<?php echo isset($errors['last_name']) ? 'error' : ''; ?>"
                         >
-                        <button type="button" id="gtr-egd-lookup-btn" class="gtr-egd-lookup-btn">EGD Lookup</button>
                     </div>
+                </div>
+
+                <div class="gtr-egd-lookup-row">
+                    <button type="button" id="gtr-egd-lookup-btn" class="gtr-egd-lookup-btn">EGD Lookup</button>
                 </div>
 
                 <div class="gtr-form-row">
