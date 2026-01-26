@@ -68,8 +68,8 @@ class GTR_Display {
         $countries = GTR_Form_Handler::get_country_list();
 
         ?>
-        <div class="gtr-registration-form">
-            <h2>Tournament Registration</h2>
+        <div id="gtr-registration" class="gtr-registration-form">
+            <h2>Tournament Registration <a href="#gtr-registration" class="gtr-anchor-link" title="Copy link to this section">&#x1F517;</a></h2>
             <form method="post" action="" class="gtr-form">
                 <?php wp_nonce_field('gtr_registration_form', 'gtr_nonce'); ?>
                 <input type="hidden" name="tournament_slug" value="<?php echo esc_attr($tournament_slug); ?>" />
@@ -228,7 +228,7 @@ class GTR_Display {
 
         ?>
         <div id="gtr-participants" class="gtr-participant-list">
-            <h2>Registered Participants</h2>
+            <h2>Registered Participants <a href="#gtr-participants" class="gtr-anchor-link" title="Copy link to this section">&#x1F517;</a></h2>
             <p class="gtr-count">Total registered: <strong><?php echo esc_html($count); ?></strong></p>
 
             <?php if (empty($participants)): ?>
