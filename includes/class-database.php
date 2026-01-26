@@ -29,6 +29,7 @@ class GTR_Database {
             email varchar(100) NOT NULL,
             egd_number varchar(20) DEFAULT NULL,
             phone_number varchar(20) NOT NULL,
+            rounds varchar(100) DEFAULT NULL,
             registration_date datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
             PRIMARY KEY  (id),
             KEY tournament_slug (tournament_slug)
@@ -46,6 +47,18 @@ class GTR_Database {
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
 
+        // Sanitize rounds - only allow comma-separated numbers
+        $rounds = null;
+        if (!empty($data['rounds']) && is_array($data['rounds'])) {
+            $valid_rounds = array_filter(array_map('intval', $data['rounds']), function($r) {
+                return $r > 0 && $r <= 20;
+            });
+            if (!empty($valid_rounds)) {
+                sort($valid_rounds);
+                $rounds = implode(',', $valid_rounds);
+            }
+        }
+
         $result = $wpdb->insert(
             $table_name,
             array(
@@ -57,8 +70,9 @@ class GTR_Database {
                 'email' => sanitize_email($data['email']),
                 'egd_number' => !empty($data['egd_number']) ? sanitize_text_field($data['egd_number']) : null,
                 'phone_number' => sanitize_text_field($data['phone_number']),
+                'rounds' => $rounds,
             ),
-            array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
+            array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
         );
 
         return $result !== false;

@@ -123,6 +123,7 @@ class GTR_Admin {
 
             <div class="notice notice-info">
                 <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament"]</code> to add a registration form.</p>
+                <p>Add <code>rounds="N"</code> to let participants select which rounds they'll play (e.g., <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code>).</p>
             </div>
 
             <?php if (empty($all_tournaments)): ?>
@@ -184,6 +185,7 @@ class GTR_Admin {
                             <th>Email</th>
                             <th>EGD Number</th>
                             <th>Phone Number</th>
+                            <th>Rounds</th>
                             <th>Registration Date</th>
                             <th>Actions</th>
                         </tr>
@@ -200,6 +202,7 @@ class GTR_Admin {
                                 <td><?php echo esc_html($registration->email); ?></td>
                                 <td><?php echo esc_html($registration->egd_number ?? '-'); ?></td>
                                 <td><?php echo esc_html($registration->phone_number); ?></td>
+                                <td><?php echo esc_html($registration->rounds ?? '-'); ?></td>
                                 <td><?php echo esc_html($registration->registration_date); ?></td>
                                 <td>
                                     <?php
@@ -275,6 +278,7 @@ class GTR_Admin {
             'Email',
             'EGD Number',
             'Phone Number',
+            'Rounds',
             'Registration Date'
         ));
 
@@ -290,6 +294,7 @@ class GTR_Admin {
                 $this->sanitize_csv_field($registration->email),
                 $this->sanitize_csv_field($registration->egd_number ?? ''),
                 $this->sanitize_csv_field($registration->phone_number),
+                $this->sanitize_csv_field($registration->rounds ?? ''),
                 $this->sanitize_csv_field($registration->registration_date)
             ));
         }

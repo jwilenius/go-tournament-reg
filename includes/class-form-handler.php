@@ -65,6 +65,7 @@ class GTR_Form_Handler {
                 'email' => sanitize_email($_POST['email'] ?? ''),
                 'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
                 'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
+                'rounds' => isset($_POST['rounds']) ? array_map('intval', (array) $_POST['rounds']) : array(),
             );
             set_transient('gtr_form_data', $sanitized_data, 45);
             return;
@@ -94,6 +95,7 @@ class GTR_Form_Handler {
                 'email' => sanitize_email($_POST['email'] ?? ''),
                 'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
                 'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
+                'rounds' => isset($_POST['rounds']) ? array_map('intval', (array) $_POST['rounds']) : array(),
             );
             set_transient('gtr_form_data', $sanitized_data, 45);
         }
@@ -152,6 +154,23 @@ class GTR_Form_Handler {
         $tournament_slug = sanitize_text_field($data['tournament_slug'] ?? 'default');
         if (!isset($errors['email']) && GTR_Database::email_exists($data['email'], $tournament_slug)) {
             $errors['email'] = 'This email is already registered for this tournament.';
+        }
+
+        // Rounds validation (only if tournament has rounds configured)
+        $tournament_rounds = isset($data['tournament_rounds']) ? intval($data['tournament_rounds']) : 0;
+        if ($tournament_rounds > 0) {
+            $selected_rounds = isset($data['rounds']) ? array_filter(array_map('intval', (array) $data['rounds'])) : array();
+            if (empty($selected_rounds)) {
+                $errors['rounds'] = 'Please select at least one round to participate in.';
+            } else {
+                // Validate that selected rounds are within valid range
+                foreach ($selected_rounds as $round) {
+                    if ($round < 1 || $round > $tournament_rounds) {
+                        $errors['rounds'] = 'Invalid round selection.';
+                        break;
+                    }
+                }
+            }
         }
 
         return $errors;

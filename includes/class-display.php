@@ -14,8 +14,9 @@ class GTR_Display {
      * Render the complete registration page (form + participant list)
      * @param string $tournament_slug Tournament identifier
      * @param string $title Optional title to display
+     * @param int $rounds Number of rounds in the tournament (0 = no round selection)
      */
-    public static function render_registration_page($tournament_slug = 'default', $title = '') {
+    public static function render_registration_page($tournament_slug = 'default', $title = '', $rounds = 0) {
         echo '<div class="gtr-container">';
 
         if (!empty($title)) {
@@ -23,7 +24,7 @@ class GTR_Display {
         }
 
         self::render_messages();
-        self::render_registration_form($tournament_slug);
+        self::render_registration_form($tournament_slug, $rounds);
         self::render_participant_list($tournament_slug);
 
         echo '</div>';
@@ -54,8 +55,9 @@ class GTR_Display {
     /**
      * Render the registration form
      * @param string $tournament_slug Tournament identifier
+     * @param int $rounds Number of rounds in the tournament
      */
-    private static function render_registration_form($tournament_slug = 'default') {
+    private static function render_registration_form($tournament_slug = 'default', $rounds = 0) {
         $form_data = get_transient('gtr_form_data');
         $errors = get_transient('gtr_form_errors');
 
@@ -179,6 +181,33 @@ class GTR_Display {
                         <small>Optional</small>
                     </div>
                 </div>
+
+                <?php if ($rounds > 0): ?>
+                    <input type="hidden" name="tournament_rounds" value="<?php echo esc_attr($rounds); ?>" />
+                    <div class="gtr-form-row gtr-rounds-row">
+                        <div class="gtr-form-field gtr-rounds-field">
+                            <label>Rounds Participating <span class="required">*</span></label>
+                            <div class="gtr-rounds-checkboxes <?php echo isset($errors['rounds']) ? 'error' : ''; ?>">
+                                <?php
+                                $selected_rounds = isset($form_data['rounds']) ? (array) $form_data['rounds'] : array();
+                                for ($i = 1; $i <= $rounds; $i++):
+                                    $checked = in_array($i, $selected_rounds) ? 'checked' : '';
+                                ?>
+                                    <label class="gtr-round-checkbox">
+                                        <input
+                                            type="checkbox"
+                                            name="rounds[]"
+                                            value="<?php echo esc_attr($i); ?>"
+                                            <?php echo $checked; ?>
+                                        >
+                                        Round <?php echo esc_html($i); ?>
+                                    </label>
+                                <?php endfor; ?>
+                            </div>
+                            <small>Select the rounds you will participate in</small>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <div class="gtr-form-submit">
                     <button type="submit" name="gtr_submit" class="gtr-button">Register</button>

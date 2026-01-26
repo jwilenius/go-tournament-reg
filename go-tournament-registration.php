@@ -64,14 +64,16 @@ function gtr_registration_shortcode($atts) {
     $atts = shortcode_atts(array(
         'tournament' => 'default',
         'title' => '',
+        'rounds' => 0,
     ), $atts, 'go_tournament_registration');
 
     // Sanitize tournament slug (lowercase, alphanumeric with hyphens only)
     $tournament_slug = sanitize_title($atts['tournament']);
     $title = sanitize_text_field($atts['title']);
+    $rounds = max(0, min(20, intval($atts['rounds']))); // Limit 0-20 rounds
 
     ob_start();
-    GTR_Display::render_registration_page($tournament_slug, $title);
+    GTR_Display::render_registration_page($tournament_slug, $title, $rounds);
     return ob_get_clean();
 }
 

@@ -341,6 +341,60 @@
     100% { background-color: #fff; border-color: #ddd; }
 }
 
+/* Rounds Selection */
+.gtr-rounds-row {
+    grid-template-columns: 1fr;
+}
+
+.gtr-rounds-field {
+    grid-column: 1 / -1;
+}
+
+.gtr-rounds-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f9f9f9;
+}
+
+.gtr-rounds-checkboxes.error {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
+.gtr-round-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: normal;
+    cursor: pointer;
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.gtr-round-checkbox:hover {
+    border-color: #4a90e2;
+    background: #f0f7ff;
+}
+
+.gtr-round-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.gtr-round-checkbox input[type="checkbox"]:checked + span,
+.gtr-round-checkbox:has(input:checked) {
+    color: #4a90e2;
+    font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .gtr-form-row {
