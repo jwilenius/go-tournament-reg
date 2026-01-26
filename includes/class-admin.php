@@ -121,9 +121,13 @@ class GTR_Admin {
                 </div>
             <?php endif; ?>
 
+            <div class="notice notice-info">
+                <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament"]</code> to add a registration form.</p>
+            </div>
+
             <?php if (empty($all_tournaments)): ?>
                 <div class="notice notice-warning">
-                    <p>No tournaments found. Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament"]</code> and have someone register to see data here.</p>
+                    <p>No tournaments found yet. Once someone registers, tournament data will appear here.</p>
                 </div>
             <?php else: ?>
                 <div class="gtr-admin-filters" style="margin: 20px 0; display: flex; align-items: center; gap: 15px;">
