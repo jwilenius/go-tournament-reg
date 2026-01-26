@@ -64,6 +64,7 @@ class GTR_Form_Handler {
                 'country' => sanitize_text_field($_POST['country'] ?? ''),
                 'email' => sanitize_email($_POST['email'] ?? ''),
                 'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
+                'gor' => !empty($_POST['gor']) && is_numeric($_POST['gor']) ? intval($_POST['gor']) : '',
                 'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
                 'rounds' => isset($_POST['rounds']) ? array_map('intval', (array) $_POST['rounds']) : array(),
             );
@@ -100,6 +101,7 @@ class GTR_Form_Handler {
                 'country' => sanitize_text_field($_POST['country'] ?? ''),
                 'email' => sanitize_email($_POST['email'] ?? ''),
                 'egd_number' => sanitize_text_field($_POST['egd_number'] ?? ''),
+                'gor' => !empty($_POST['gor']) && is_numeric($_POST['gor']) ? intval($_POST['gor']) : '',
                 'phone_number' => sanitize_text_field($_POST['phone_number'] ?? ''),
                 'rounds' => isset($_POST['rounds']) ? array_map('intval', (array) $_POST['rounds']) : array(),
             );

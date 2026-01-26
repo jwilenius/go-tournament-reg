@@ -28,6 +28,7 @@ class GTR_Database {
             country varchar(2) NOT NULL,
             email varchar(100) NOT NULL,
             egd_number varchar(20) DEFAULT NULL,
+            gor int DEFAULT NULL,
             phone_number varchar(20) NOT NULL,
             rounds varchar(100) DEFAULT NULL,
             registration_date datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -59,6 +60,12 @@ class GTR_Database {
             }
         }
 
+        // Sanitize GoR - must be a positive integer or null
+        $gor = null;
+        if (!empty($data['gor']) && is_numeric($data['gor'])) {
+            $gor = max(0, intval($data['gor']));
+        }
+
         $result = $wpdb->insert(
             $table_name,
             array(
@@ -69,10 +76,11 @@ class GTR_Database {
                 'country' => sanitize_text_field($data['country']),
                 'email' => sanitize_email($data['email']),
                 'egd_number' => !empty($data['egd_number']) ? sanitize_text_field($data['egd_number']) : null,
+                'gor' => $gor,
                 'phone_number' => sanitize_text_field($data['phone_number']),
                 'rounds' => $rounds,
             ),
-            array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')
+            array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s')
         );
 
         return $result !== false;
@@ -105,7 +113,7 @@ class GTR_Database {
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
         $results = $wpdb->get_results(
-            $wpdb->prepare("SELECT first_name, last_name, player_strength, country FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
+            $wpdb->prepare("SELECT first_name, last_name, player_strength, gor, country FROM $table_name WHERE tournament_slug = %s", $tournament_slug)
         );
 
         // Sort using custom logic

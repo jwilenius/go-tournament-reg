@@ -159,7 +159,8 @@
                 'last_name': player.last_name,
                 'egd_number': player.pin,
                 'player_strength': player.strength,
-                'country': player.country
+                'country': player.country,
+                'gor': player.gor
             };
 
             for (var fieldId in fields) {

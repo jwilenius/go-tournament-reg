@@ -181,6 +181,7 @@ class GTR_Admin {
                             <th>First Name</th>
                             <th>Last Name</th>
                             <th>Player Strength</th>
+                            <th>GoR</th>
                             <th>Country</th>
                             <th>Email</th>
                             <th>EGD Number</th>
@@ -198,6 +199,7 @@ class GTR_Admin {
                                 <td><?php echo esc_html($registration->first_name); ?></td>
                                 <td><?php echo esc_html($registration->last_name); ?></td>
                                 <td><?php echo esc_html($registration->player_strength); ?></td>
+                                <td><?php echo esc_html($registration->gor ?? '-'); ?></td>
                                 <td><?php echo esc_html($countries[$registration->country] ?? $registration->country); ?></td>
                                 <td><?php echo esc_html($registration->email); ?></td>
                                 <td><?php echo esc_html($registration->egd_number ?? '-'); ?></td>
@@ -274,6 +276,7 @@ class GTR_Admin {
             'First Name',
             'Last Name',
             'Player Strength',
+            'GoR',
             'Country',
             'Email',
             'EGD Number',
@@ -290,6 +293,7 @@ class GTR_Admin {
                 $this->sanitize_csv_field($registration->first_name),
                 $this->sanitize_csv_field($registration->last_name),
                 $this->sanitize_csv_field($registration->player_strength),
+                $this->sanitize_csv_field($registration->gor ?? ''),
                 $this->sanitize_csv_field($countries[$registration->country] ?? $registration->country),
                 $this->sanitize_csv_field($registration->email),
                 $this->sanitize_csv_field($registration->egd_number ?? ''),

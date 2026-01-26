@@ -182,6 +182,7 @@ class GTR_Display {
                         <small>Optional</small>
                     </div>
                 </div>
+                <input type="hidden" id="gor" name="gor" value="<?php echo esc_attr($form_data['gor'] ?? ''); ?>" />
 
                 <?php if ($rounds > 0): ?>
                     <input type="hidden" name="tournament_rounds" value="<?php echo esc_attr($rounds); ?>" />
@@ -240,16 +241,22 @@ class GTR_Display {
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>Rank (GoR)</th>
                                 <th>Country</th>
-                                <th>Player Strength</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($participants as $participant): ?>
+                                <?php
+                                $rank_display = esc_html($participant->player_strength);
+                                if (!empty($participant->gor)) {
+                                    $rank_display .= ' (' . esc_html($participant->gor) . ')';
+                                }
+                                ?>
                                 <tr>
                                     <td><?php echo esc_html($participant->first_name . ' ' . $participant->last_name); ?></td>
+                                    <td class="gtr-strength"><?php echo $rank_display; ?></td>
                                     <td><?php echo esc_html($countries[$participant->country] ?? $participant->country); ?></td>
-                                    <td class="gtr-strength"><?php echo esc_html($participant->player_strength); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
