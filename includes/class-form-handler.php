@@ -25,8 +25,8 @@ class GTR_Form_Handler {
         $transient_key = 'gtr_rate_' . md5($ip);
         $attempts = get_transient($transient_key);
 
-        if ($attempts !== false && $attempts >= 5) {
-            return false; // Rate limited: 5 submissions per 10 minutes
+        if ($attempts !== false && $attempts >= 20) {
+            return false; // Rate limited: 20 submissions per 10 minutes
         }
 
         set_transient($transient_key, ($attempts ?: 0) + 1, 600);
