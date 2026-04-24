@@ -7,17 +7,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 OVERRIDE=false
+PUSH=false
 
 for arg in "$@"; do
     case "$arg" in
         --override) OVERRIDE=true ;;
+        --push) PUSH=true ;;
         -h|--help)
-            echo "Usage: ./tag-release.sh [--override]"
+            echo "Usage: ./tag-release.sh [--override] [--push]"
             echo ""
             echo "Tags HEAD with the version from go-tournament-registration.php."
             echo ""
             echo "Options:"
             echo "  --override   Delete and re-push the tag if it already exists"
+            echo "  --push       Push the tag to origin after creating it"
             echo "  -h, --help   Show this help message"
             exit 0
             ;;
@@ -39,6 +42,12 @@ fi
 
 git tag "$TAG"
 echo "Tagged HEAD as $TAG"
-echo ""
-echo "Push with:"
-echo "  git push origin $TAG"
+
+if [ "$PUSH" = true ]; then
+    git push origin "$TAG"
+    echo "Pushed $TAG to origin"
+else
+    echo ""
+    echo "Push with:"
+    echo "  git push origin $TAG"
+fi
