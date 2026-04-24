@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Get plugin version
         id: version
@@ -27,7 +27,7 @@ jobs:
           git archive --format=zip --prefix=go-tournament-registration/ HEAD -o go-tournament-registration.zip
 
       - name: Upload ZIP as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: go-tournament-registration-${{ steps.version.outputs.version }}
           path: go-tournament-registration.zip
@@ -35,7 +35,7 @@ jobs:
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.3.2
         with:
           files: go-tournament-registration.zip
           generate_release_notes: true
