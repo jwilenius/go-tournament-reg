@@ -35,7 +35,8 @@ if git tag | grep -q "^${TAG}$"; then
         git tag -d "$TAG"
         git push origin ":$TAG" 2>/dev/null || true
     else
-        echo "Tag $TAG already exists. Use --override to replace it."
+        echo "Tag $TAG already exists. You must bump the version to set a new release tag."
+        echo "   To overwrite the tag on the new HEAD, use --override."
         exit 1
     fi
 fi
