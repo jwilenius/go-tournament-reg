@@ -31,21 +31,25 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-# Create .env file if it doesn't exist
+# Create .env file if it doesn't exist, or add any missing keys
 if [ ! -f .env ]; then
     echo -e "${YELLOW}Creating .env file with default values...${NC}"
-    cat > .env << 'EOF'
-MYSQL_DATABASE=wordpress
-MYSQL_USER=wordpress
-MYSQL_PASSWORD=wordpress
-MYSQL_ROOT_PASSWORD=rootpassword
-
-# Version pins — keep in sync with production
-WORDPRESS_VERSION=6.9.4
-ASTRA_VERSION=4.13.0
-EOF
-    echo -e "${GREEN}.env file created${NC}"
+    touch .env
 fi
+
+add_env_default() {
+    local key="$1" value="$2"
+    if ! grep -q "^${key}=" .env; then
+        echo "${key}=${value}" >> .env
+    fi
+}
+
+add_env_default MYSQL_DATABASE wordpress
+add_env_default MYSQL_USER wordpress
+add_env_default MYSQL_PASSWORD wordpress
+add_env_default MYSQL_ROOT_PASSWORD rootpassword
+add_env_default WORDPRESS_VERSION 6.9.4
+add_env_default ASTRA_VERSION 4.13.0
 
 # Load version pins from .env
 set -a; source .env; set +a
