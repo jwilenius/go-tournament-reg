@@ -39,6 +39,10 @@ MYSQL_DATABASE=wordpress
 MYSQL_USER=wordpress
 MYSQL_PASSWORD=wordpress
 MYSQL_ROOT_PASSWORD=rootpassword
+
+# Version pins — keep in sync with production
+WORDPRESS_VERSION=6.9.4
+ASTRA_VERSION=4.13.0
 EOF
     echo -e "${GREEN}.env file created${NC}"
 fi
@@ -73,17 +77,56 @@ if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
     echo -e "${YELLOW}WordPress is starting up (this may take a moment on first run)${NC}"
 fi
 
+# Load version pins from .env
+set -a; source .env; set +a
+
+# Auto-configure WordPress and install Astra if not already set up
+echo -e "${YELLOW}Checking WordPress setup...${NC}"
+WP="docker-compose run --rm wpcli"
+
+if ! $WP core is-installed --path=/var/www/html 2>/dev/null; then
+    echo -e "${YELLOW}Running WordPress install...${NC}"
+    $WP core install \
+        --path=/var/www/html \
+        --url=http://localhost:8080 \
+        --title="Go Tournament Dev" \
+        --admin_user=admin \
+        --admin_password=admin \
+        --admin_email=admin@localhost.local \
+        --skip-email
+    echo -e "${GREEN}WordPress installed${NC}"
+fi
+
+if ! $WP theme is-installed astra --path=/var/www/html 2>/dev/null; then
+    echo -e "${YELLOW}Installing Astra ${ASTRA_VERSION}...${NC}"
+    $WP theme install astra --version="${ASTRA_VERSION}" --path=/var/www/html
+    echo -e "${GREEN}Astra installed${NC}"
+fi
+
+if ! $WP theme status astra --path=/var/www/html 2>/dev/null | grep -q "Active"; then
+    echo -e "${YELLOW}Activating Astra theme...${NC}"
+    $WP theme activate astra --path=/var/www/html
+    echo -e "${GREEN}Astra activated${NC}"
+fi
+
+if ! $WP plugin is-active go-tournament-registration --path=/var/www/html 2>/dev/null; then
+    echo -e "${YELLOW}Activating plugin...${NC}"
+    $WP plugin activate go-tournament-registration --path=/var/www/html
+    echo -e "${GREEN}Plugin activated${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}Local development environment is ready!${NC}"
 echo "================================================"
 echo ""
 echo "WordPress:  http://localhost:8080"
 echo "Admin:      http://localhost:8080/wp-admin"
+echo "  Username: admin"
+echo "  Password: admin"
 echo ""
 echo -e "${YELLOW}First time setup:${NC}"
-echo "1. Visit http://localhost:8080 to complete WordPress installation"
-echo "2. Go to Plugins and activate 'Go Tournament Registration'"
-echo "3. Create a page with shortcode: [go_tournament_registration]"
+echo "1. Visit http://localhost:8080 — WordPress is pre-configured with Astra"
+echo "2. Create a page with shortcode: [go_tournament_registration]"
 echo ""
 echo -e "${YELLOW}Useful commands:${NC}"
 echo "  docker-compose logs -f     # View logs"
