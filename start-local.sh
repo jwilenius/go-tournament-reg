@@ -47,6 +47,9 @@ EOF
     echo -e "${GREEN}.env file created${NC}"
 fi
 
+# Load version pins from .env
+set -a; source .env; set +a
+
 # Clean up any orphaned containers with conflicting names
 for container in wp-go-reg-db wp-go-reg-wordpress; do
     if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
@@ -76,9 +79,6 @@ echo ""
 if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
     echo -e "${YELLOW}WordPress is starting up (this may take a moment on first run)${NC}"
 fi
-
-# Load version pins from .env
-set -a; source .env; set +a
 
 # Auto-configure WordPress and install Astra if not already set up
 echo -e "${YELLOW}Checking WordPress setup...${NC}"
