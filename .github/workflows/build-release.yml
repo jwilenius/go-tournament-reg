@@ -29,20 +29,20 @@ jobs:
 
       - name: Create distribution ZIP
         run: |
-          git archive --format=zip --prefix=go-tournament-registration/ HEAD -o go-tournament-registration.zip
+          git archive --format=zip --prefix=go-tournament-registration/ HEAD -o go-tournament-registration-${{ steps.version.outputs.version }}.zip
 
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4.6.2
         with:
           name: go-tournament-registration-${{ steps.version.outputs.version }}
-          path: go-tournament-registration.zip
+          path: go-tournament-registration-${{ steps.version.outputs.version }}.zip
           retention-days: 90
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2.3.2
         with:
-          files: go-tournament-registration.zip
+          files: go-tournament-registration-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
