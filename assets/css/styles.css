@@ -1,5 +1,13 @@
 /* Go Tournament Registration - Frontend Styles */
 
+/* Reset theme overrides (e.g. Astra applies border-left to content divs) */
+.gtr-container,
+.gtr-registration-form,
+.gtr-participant-list,
+.gtr-message {
+    border-left: none;
+}
+
 .gtr-container {
     max-width: 1200px;
     margin: 0 auto;
