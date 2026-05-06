@@ -104,7 +104,10 @@ class GTR_Display {
                 </div>
 
                 <div class="gtr-egd-lookup-row">
-                    <button type="button" id="gtr-egd-lookup-btn" class="gtr-egd-lookup-btn">EGD Lookup</button>
+                    <span class="gtr-tooltip-wrapper">
+                        <button type="button" id="gtr-egd-lookup-btn" class="gtr-egd-lookup-btn">Click for EGD lookup</button>
+                        <span class="gtr-tooltip" role="tooltip">Search the EGD for your number and GOR.</span>
+                    </span>
                 </div>
 
                 <div class="gtr-form-row">
