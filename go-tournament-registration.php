@@ -26,9 +26,11 @@ define('GTR_TABLE_NAME', 'go_tournament_registrations');
 
 // Include required files
 require_once GTR_PLUGIN_DIR . 'includes/class-database.php';
+require_once GTR_PLUGIN_DIR . 'includes/class-registration-validator.php';
 require_once GTR_PLUGIN_DIR . 'includes/class-form-handler.php';
 require_once GTR_PLUGIN_DIR . 'includes/class-display.php';
 require_once GTR_PLUGIN_DIR . 'includes/class-admin.php';
+require_once GTR_PLUGIN_DIR . 'includes/class-admin-ajax.php';
 
 // Activation hook
 register_activation_hook(__FILE__, 'gtr_activate_plugin');
@@ -54,6 +56,7 @@ function gtr_init() {
     // Initialize admin
     if (is_admin()) {
         new GTR_Admin();
+        new GTR_Admin_Ajax();
     }
 }
 
@@ -101,7 +104,34 @@ function gtr_enqueue_assets() {
 add_action('admin_enqueue_scripts', 'gtr_enqueue_admin_styles');
 
 function gtr_enqueue_admin_styles($hook) {
-    if (strpos($hook, 'go-tournament-registration') !== false) {
-        wp_enqueue_style('gtr-admin-styles', GTR_PLUGIN_URL . 'assets/css/admin-styles.css', array(), GTR_VERSION);
+    if (strpos($hook, 'go-tournament-registration') === false) {
+        return;
     }
+
+    wp_enqueue_style('gtr-admin-styles', GTR_PLUGIN_URL . 'assets/css/admin-styles.css', array(), GTR_VERSION);
+    wp_enqueue_style('gtr-styles', GTR_PLUGIN_URL . 'assets/css/styles.css', array(), GTR_VERSION);
+
+    wp_enqueue_script(
+        'gtr-egd-lookup',
+        GTR_PLUGIN_URL . 'assets/js/egd-lookup.js',
+        array(),
+        GTR_VERSION,
+        true
+    );
+    wp_localize_script('gtr-egd-lookup', 'gtrEgdLookup', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('gtr_egd_lookup'),
+    ));
+
+    wp_enqueue_script(
+        'gtr-admin-edit',
+        GTR_PLUGIN_URL . 'assets/js/admin-edit.js',
+        array('gtr-egd-lookup'),
+        GTR_VERSION,
+        true
+    );
+    wp_localize_script('gtr-admin-edit', 'gtrAdminEdit', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'updateNonce' => wp_create_nonce('gtr_update_registration'),
+    ));
 }

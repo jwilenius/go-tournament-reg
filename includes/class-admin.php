@@ -128,6 +128,7 @@ class GTR_Admin {
         // Get registrations for the selected tournament only
         $registrations = !empty($tournament_filter) ? GTR_Database::get_all_registrations($tournament_filter) : array();
         $countries = GTR_Form_Handler::get_country_list();
+        $tournament_rounds = $tournament_filter ? GTR_Database::get_tournament_rounds($tournament_filter) : 0;
 
         ?>
         <div class="wrap">
@@ -205,7 +206,7 @@ class GTR_Admin {
             <?php if (empty($registrations)): ?>
                 <p>No registrations<?php echo $tournament_filter ? ' for this tournament' : ''; ?>.</p>
             <?php else: ?>
-                <table class="wp-list-table widefat fixed striped">
+                <table class="wp-list-table widefat fixed striped gtr-registrations-table" data-tournament-rounds="<?php echo (int) $tournament_rounds; ?>">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -225,38 +226,54 @@ class GTR_Admin {
                     </thead>
                     <tbody>
                         <?php foreach ($registrations as $registration): ?>
-                            <tr>
+                            <?php
+                            $country_display = $countries[$registration->country] ?? $registration->country;
+                            $gor_value = ($registration->gor === null || $registration->gor === '') ? '' : (string) $registration->gor;
+                            $egd_value = $registration->egd_number ?? '';
+                            $rounds_value = $registration->rounds ?? '';
+                            ?>
+                            <tr class="gtr-registration-row" data-id="<?php echo (int) $registration->id; ?>">
                                 <td><?php echo esc_html($registration->id); ?></td>
                                 <td><strong><?php echo esc_html($registration->tournament_slug); ?></strong></td>
-                                <td><?php echo esc_html($registration->first_name); ?></td>
-                                <td><?php echo esc_html($registration->last_name); ?></td>
-                                <td><?php echo esc_html($registration->player_strength); ?></td>
-                                <td><?php echo esc_html($registration->gor ?? '-'); ?></td>
-                                <td><?php echo esc_html($countries[$registration->country] ?? $registration->country); ?></td>
-                                <td><?php echo esc_html($registration->email); ?></td>
-                                <td><?php echo esc_html($registration->egd_number ?? '-'); ?></td>
-                                <td><?php echo esc_html($registration->phone_number); ?></td>
-                                <td><?php echo esc_html($registration->rounds ?? '-'); ?></td>
+                                <td data-field="first_name" data-value="<?php echo esc_attr($registration->first_name); ?>"><?php echo esc_html($registration->first_name); ?></td>
+                                <td data-field="last_name" data-value="<?php echo esc_attr($registration->last_name); ?>"><?php echo esc_html($registration->last_name); ?></td>
+                                <td data-field="player_strength" data-value="<?php echo esc_attr($registration->player_strength); ?>"><?php echo esc_html($registration->player_strength); ?></td>
+                                <td data-field="gor" data-value="<?php echo esc_attr($gor_value); ?>"><?php echo esc_html($gor_value === '' ? '-' : $gor_value); ?></td>
+                                <td data-field="country" data-value="<?php echo esc_attr($registration->country); ?>" data-display="<?php echo esc_attr($country_display); ?>"><?php echo esc_html($country_display); ?></td>
+                                <td data-field="email" data-value="<?php echo esc_attr($registration->email); ?>"><?php echo esc_html($registration->email); ?></td>
+                                <td data-field="egd_number" data-value="<?php echo esc_attr($egd_value); ?>"><?php echo esc_html($egd_value === '' ? '-' : $egd_value); ?></td>
+                                <td data-field="phone_number" data-value="<?php echo esc_attr($registration->phone_number); ?>"><?php echo esc_html($registration->phone_number); ?></td>
+                                <td data-field="rounds" data-value="<?php echo esc_attr($rounds_value); ?>"><?php echo esc_html($rounds_value === '' ? '-' : $rounds_value); ?></td>
                                 <td><?php echo esc_html($registration->registration_date); ?></td>
-                                <td>
+                                <td class="gtr-row-actions">
                                     <?php
                                     $delete_url = admin_url('admin.php?page=go-tournament-registration&action=delete&id=' . $registration->id);
                                     if ($tournament_filter) {
                                         $delete_url = add_query_arg('tournament', $tournament_filter, $delete_url);
                                     }
                                     ?>
+                                    <button type="button" class="button button-small gtr-edit-row">Edit</button>
+                                    <button type="button" class="button button-small button-primary gtr-save-row">Save</button>
+                                    <button type="button" class="button button-small gtr-row-egd-lookup-btn">EGD lookup</button>
                                     <a
                                         href="<?php echo wp_nonce_url($delete_url, 'gtr_delete_registration'); ?>"
-                                        class="button button-small button-link-delete"
+                                        class="button button-small button-link-delete gtr-delete-row"
                                         onclick="return confirm('Are you sure you want to delete this registration?');"
                                     >
                                         Delete
                                     </a>
+                                    <button type="button" class="button button-small gtr-cancel-row">Cancel</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+
+                <template id="gtr-country-options">
+                    <?php foreach ($countries as $code => $name): ?>
+                        <option value="<?php echo esc_attr($code); ?>"><?php echo esc_html($name); ?></option>
+                    <?php endforeach; ?>
+                </template>
             <?php endif; ?>
         </div>
         <?php

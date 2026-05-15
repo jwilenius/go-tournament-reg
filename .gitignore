@@ -28,3 +28,6 @@ wp-includes/
 
 # plugin binary
 *.zip
+
+# scratch / planning files (never committed)
+/junk/

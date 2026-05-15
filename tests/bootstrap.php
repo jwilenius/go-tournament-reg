@@ -126,3 +126,37 @@ if (!function_exists('wp_get_referer')) {
 
 // Autoload test helpers
 require_once __DIR__ . '/TestHelpers.php';
+
+/**
+ * Mockable GTR_Database stub so the validator can be unit-tested without WordPress.
+ * Tests populate GtrDatabaseStub::$rows as ['email' => ..., 'tournament_slug' => ..., 'id' => ...]
+ * entries; GTR_Database::email_exists matches against this list.
+ */
+if (!class_exists('GTR_Database')) {
+    class GtrDatabaseStub {
+        /** @var array<int, array{email:string,tournament_slug:string,id:int}> */
+        public static $rows = array();
+
+        public static function reset() {
+            self::$rows = array();
+        }
+    }
+
+    class GTR_Database {
+        public static function email_exists($email, $tournament_slug = 'default', $exclude_id = null) {
+            if (empty($email)) {
+                return false;
+            }
+            $email_lc = strtolower($email);
+            foreach (GtrDatabaseStub::$rows as $row) {
+                if (strtolower($row['email']) !== $email_lc) continue;
+                if ($row['tournament_slug'] !== $tournament_slug) continue;
+                if ($exclude_id !== null && (int) $row['id'] === (int) $exclude_id) continue;
+                return true;
+            }
+            return false;
+        }
+    }
+}
+
+require_once __DIR__ . '/../includes/class-registration-validator.php';

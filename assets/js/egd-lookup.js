@@ -1,36 +1,57 @@
-(function() {
+(function () {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', function() {
-        initEgdLookup();
-    });
+    var DEFAULT_FIELD_IDS = {
+        first_name: 'first_name',
+        last_name: 'last_name',
+        country: 'country',
+        egd_number: 'egd_number',
+        player_strength: 'player_strength',
+        gor: 'gor'
+    };
 
-    function initEgdLookup() {
-        var lookupBtn = document.getElementById('gtr-egd-lookup-btn');
-        if (!lookupBtn) return;
+    /**
+     * Initialise EGD lookup against a root element.
+     *
+     * @param {Element|Document} root The container holding both the lookup button and the target fields.
+     *                                 For per-row admin edit pass the row element; for the public form pass `document`.
+     * @param {Object} options { ajaxUrl, nonce, fieldIds?, button? }
+     *   fieldIds defaults to public-form ids. Each value may be a CSS selector (relative to root) or an id.
+     *   button may be a CSS selector relative to root; defaults to '#gtr-egd-lookup-btn'.
+     * @returns {{destroy: function}} controller; call destroy() to detach handlers.
+     */
+    function initEgdLookup(root, options) {
+        if (!root || !options || !options.ajaxUrl || !options.nonce) {
+            return null;
+        }
 
+        var lookupBtn = options.button
+            ? (typeof options.button === 'string' ? root.querySelector(options.button) : options.button)
+            : root.querySelector('#gtr-egd-lookup-btn');
+        if (!lookupBtn) return null;
+
+        var fieldIds = mergeFieldIds(options.fieldIds);
         var dropdown = null;
         var isLoading = false;
 
-        lookupBtn.addEventListener('click', function(e) {
+        function onButtonClick(e) {
             e.preventDefault();
             if (!isLoading) performLookup();
-        });
+        }
 
-        document.addEventListener('click', function(e) {
+        function onDocumentClick(e) {
             if (dropdown && !dropdown.contains(e.target) && e.target !== lookupBtn) {
                 closeDropdown();
             }
-        });
+        }
+
+        lookupBtn.addEventListener('click', onButtonClick);
+        document.addEventListener('click', onDocumentClick);
 
         function performLookup() {
-            var firstName = document.getElementById('first_name');
-            var lastName = document.getElementById('last_name');
-            var country = document.getElementById('country');
-
-            var firstNameVal = firstName ? firstName.value.trim() : '';
-            var lastNameVal = lastName ? lastName.value.trim() : '';
-            var countryVal = country ? country.value : '';
+            var firstNameVal = readField('first_name');
+            var lastNameVal = readField('last_name');
+            var countryVal = readField('country');
 
             if (!firstNameVal && !lastNameVal && !countryVal) {
                 showError('Please enter a name or select a country before searching.');
@@ -41,18 +62,18 @@
 
             var formData = new FormData();
             formData.append('action', 'gtr_egd_lookup');
-            formData.append('nonce', gtrEgdLookup.nonce);
+            formData.append('nonce', options.nonce);
             formData.append('first_name', firstNameVal);
             formData.append('last_name', lastNameVal);
             formData.append('country', countryVal);
 
-            fetch(gtrEgdLookup.ajaxUrl, {
+            fetch(options.ajaxUrl, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
             })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
                 hideLoading();
                 if (data.success) {
                     showResults(data.data);
@@ -60,7 +81,7 @@
                     showError(data.data && data.data.message ? data.data.message : 'An error occurred.');
                 }
             })
-            .catch(function() {
+            .catch(function () {
                 hideLoading();
                 showError('Failed to connect to the server.');
             });
@@ -90,11 +111,11 @@
                 noResults.textContent = 'No players found in EGD.';
                 dropdown.appendChild(noResults);
             } else {
-                data.players.forEach(function(player) {
+                data.players.forEach(function (player) {
                     var item = document.createElement('div');
                     item.className = 'gtr-egd-player';
                     item.innerHTML = createPlayerHtml(player);
-                    item.addEventListener('click', function() { selectPlayer(player); });
+                    item.addEventListener('click', function () { selectPlayer(player); });
                     dropdown.appendChild(item);
                 });
 
@@ -110,7 +131,7 @@
             var notRegistered = document.createElement('div');
             notRegistered.className = 'gtr-egd-not-registered';
             notRegistered.textContent = 'Not registered in EGD';
-            notRegistered.addEventListener('click', function() { closeDropdown(); });
+            notRegistered.addEventListener('click', function () { closeDropdown(); });
             dropdown.appendChild(notRegistered);
 
             lookupBtn.parentNode.style.position = 'relative';
@@ -130,7 +151,7 @@
             lookupBtn.parentNode.style.position = 'relative';
             lookupBtn.parentNode.appendChild(dropdown);
 
-            setTimeout(function() { closeDropdown(); }, 3000);
+            setTimeout(function () { closeDropdown(); }, 3000);
         }
 
         function closeDropdown() {
@@ -154,39 +175,104 @@
         }
 
         function selectPlayer(player) {
-            var fields = {
-                'first_name': player.first_name,
-                'last_name': player.last_name,
-                'egd_number': player.pin,
-                'player_strength': player.strength,
-                'country': player.country,
-                'gor': player.gor
+            var values = {
+                first_name: player.first_name,
+                last_name: player.last_name,
+                egd_number: player.pin,
+                player_strength: player.strength,
+                country: player.country,
+                gor: player.gor
             };
 
-            for (var fieldId in fields) {
-                var field = document.getElementById(fieldId);
-                if (field && fields[fieldId]) {
-                    field.value = fields[fieldId];
-                    field.classList.add('gtr-egd-filled');
-                    (function(f) {
-                        setTimeout(function() { f.classList.remove('gtr-egd-filled'); }, 1500);
-                    })(field);
-                }
+            for (var key in values) {
+                if (!Object.prototype.hasOwnProperty.call(values, key)) continue;
+                if (!values[key] && values[key] !== 0) continue;
+                writeField(key, values[key]);
             }
             closeDropdown();
         }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            var div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
+        function readField(key) {
+            var el = resolveField(key);
+            if (!el) return '';
+            return (el.value || '').trim();
         }
 
-        function escapeAttr(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-                      .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        function writeField(key, value) {
+            var el = resolveField(key);
+            if (!el) return;
+            el.value = value;
+            el.classList.add('gtr-egd-filled');
+            setTimeout(function () { el.classList.remove('gtr-egd-filled'); }, 1500);
         }
+
+        function resolveField(key) {
+            var ref = fieldIds[key];
+            if (!ref) return null;
+            // If it looks like a selector, query within root; otherwise treat as id.
+            if (ref.charAt(0) === '#' || ref.charAt(0) === '.' || ref.indexOf('[') !== -1) {
+                return root.querySelector ? root.querySelector(ref) : null;
+            }
+            // Plain id: prefer scoped lookup if root supports it.
+            if (root.querySelector) {
+                var scoped = root.querySelector('#' + cssEscape(ref));
+                if (scoped) return scoped;
+            }
+            return document.getElementById(ref);
+        }
+
+        function destroy() {
+            lookupBtn.removeEventListener('click', onButtonClick);
+            document.removeEventListener('click', onDocumentClick);
+            closeDropdown();
+        }
+
+        return { destroy: destroy };
     }
+
+    function mergeFieldIds(overrides) {
+        var merged = {};
+        for (var key in DEFAULT_FIELD_IDS) {
+            if (Object.prototype.hasOwnProperty.call(DEFAULT_FIELD_IDS, key)) {
+                merged[key] = DEFAULT_FIELD_IDS[key];
+            }
+        }
+        if (overrides) {
+            for (var k in overrides) {
+                if (Object.prototype.hasOwnProperty.call(overrides, k)) {
+                    merged[k] = overrides[k];
+                }
+            }
+        }
+        return merged;
+    }
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        var div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function cssEscape(value) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(value);
+        }
+        return String(value).replace(/([^\w-])/g, '\\$1');
+    }
+
+    window.GtrEgdLookup = { init: initEgdLookup };
+
+    // Back-compat auto-init for the public form.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.gtrEgdLookup) return;
+        if (!document.getElementById('gtr-egd-lookup-btn')) return;
+        initEgdLookup(document, window.gtrEgdLookup);
+    });
 })();

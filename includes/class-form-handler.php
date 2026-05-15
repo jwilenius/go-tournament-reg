@@ -117,99 +117,34 @@ class GTR_Form_Handler {
     }
 
     /**
-     * Validate form data
+     * Validate form data (public form submission).
+     *
+     * Normalizes $_POST into the shape the shared validator expects, then delegates.
      */
     private function validate_form_data($data) {
-        $errors = array();
-
-        // First name
-        if (empty($data['first_name'])) {
-            $errors['first_name'] = 'First name is required.';
-        } elseif (strlen($data['first_name']) > 30) {
-            $errors['first_name'] = 'First name must not exceed 30 characters.';
+        $rounds = array();
+        if (isset($data['rounds'])) {
+            $rounds = array_values(array_filter(array_map('intval', (array) $data['rounds'])));
         }
 
-        // Last name
-        if (empty($data['last_name'])) {
-            $errors['last_name'] = 'Last name is required.';
-        } elseif (strlen($data['last_name']) > 30) {
-            $errors['last_name'] = 'Last name must not exceed 30 characters.';
-        }
+        $normalized = array(
+            'first_name' => $data['first_name'] ?? '',
+            'last_name' => $data['last_name'] ?? '',
+            'player_strength' => $data['player_strength'] ?? '',
+            'country' => $data['country'] ?? '',
+            'email' => $data['email'] ?? '',
+            'phone_number' => $data['phone_number'] ?? '',
+            'egd_number' => $data['egd_number'] ?? '',
+            'rounds' => $rounds,
+        );
 
-        // Player strength
-        if (empty($data['player_strength'])) {
-            $errors['player_strength'] = 'Player strength is required.';
-        } elseif (!$this->validate_player_strength($data['player_strength'])) {
-            $errors['player_strength'] = 'Invalid player strength. Use format like 5k, 15k, 3d, etc. (30k-1k or 1d-9d).';
-        }
+        $options = array(
+            'tournament_slug' => sanitize_text_field($data['tournament_slug'] ?? 'default'),
+            'tournament_rounds' => isset($data['tournament_rounds']) ? intval($data['tournament_rounds']) : 0,
+            'exclude_id' => null,
+        );
 
-        // Country
-        if (empty($data['country'])) {
-            $errors['country'] = 'Country is required.';
-        }
-
-        // Email
-        if (empty($data['email'])) {
-            $errors['email'] = 'Email is required.';
-        } elseif (!is_email($data['email'])) {
-            $errors['email'] = 'Please enter a valid email address.';
-        }
-
-        // Phone number
-        if (empty($data['phone_number'])) {
-            $errors['phone_number'] = 'Phone number is required.';
-        }
-
-        // EGD number length validation (optional field, but enforce max length if provided)
-        if (!empty($data['egd_number']) && strlen($data['egd_number']) > 20) {
-            $errors['egd_number'] = 'EGD number must be 20 characters or less.';
-        }
-
-        // Check for duplicate email in the same tournament
-        $tournament_slug = sanitize_text_field($data['tournament_slug'] ?? 'default');
-        if (!isset($errors['email']) && GTR_Database::email_exists($data['email'], $tournament_slug)) {
-            $errors['email'] = 'This email is already registered for this tournament.';
-        }
-
-        // Rounds validation (only if tournament has rounds configured)
-        $tournament_rounds = isset($data['tournament_rounds']) ? intval($data['tournament_rounds']) : 0;
-        if ($tournament_rounds > 0) {
-            $selected_rounds = isset($data['rounds']) ? array_filter(array_map('intval', (array) $data['rounds'])) : array();
-            if (empty($selected_rounds)) {
-                $errors['rounds'] = 'Please select at least one round to participate in.';
-            } else {
-                // Validate that selected rounds are within valid range
-                foreach ($selected_rounds as $round) {
-                    if ($round < 1 || $round > $tournament_rounds) {
-                        $errors['rounds'] = 'Invalid round selection.';
-                        break;
-                    }
-                }
-            }
-        }
-
-        return $errors;
-    }
-
-    /**
-     * Validate player strength format
-     * Valid: 30k-1k, 1d-9d
-     */
-    private function validate_player_strength($strength) {
-        if (!preg_match('/^(\d+)([kd])$/i', $strength, $matches)) {
-            return false;
-        }
-
-        $number = (int)$matches[1];
-        $type = strtolower($matches[2]);
-
-        if ($type === 'k') {
-            return $number >= 1 && $number <= 30;
-        } elseif ($type === 'd') {
-            return $number >= 1 && $number <= 9;
-        }
-
-        return false;
+        return GTR_Registration_Validator::validate($normalized, $options);
     }
 
     /**

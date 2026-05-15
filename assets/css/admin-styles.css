@@ -20,3 +20,69 @@
 .wp-list-table.gtr-registrations-table {
     margin-top: 20px;
 }
+
+/* Inline edit */
+
+.gtr-registrations-table .gtr-edit-cell {
+    background-color: #fcf9e8;
+}
+
+.gtr-edit-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 60px;
+}
+
+.gtr-edit-country {
+    width: 100%;
+}
+
+.gtr-field-error {
+    color: #b32d2e;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.gtr-row-actions {
+    white-space: normal;
+    position: relative;
+}
+
+.gtr-row-actions .button {
+    min-width: 80px;
+    margin: 0 4px 4px 0;
+    text-align: center;
+}
+
+/* Default (read mode): show only Edit; hide edit-mode buttons and Delete. */
+.gtr-row-actions .gtr-save-row,
+.gtr-row-actions .gtr-cancel-row,
+.gtr-row-actions .gtr-row-egd-lookup-btn,
+.gtr-row-actions .gtr-delete-row {
+    display: none;
+}
+
+/* Edit mode: hide Edit, show Save/Cancel/EGD lookup/Delete. */
+.gtr-row-editing .gtr-row-actions .gtr-edit-row {
+    display: none;
+}
+
+.gtr-row-editing .gtr-row-actions .gtr-save-row,
+.gtr-row-editing .gtr-row-actions .gtr-cancel-row,
+.gtr-row-editing .gtr-row-actions .gtr-row-egd-lookup-btn,
+.gtr-row-editing .gtr-row-actions .gtr-delete-row {
+    display: inline-block;
+}
+
+/* EGD-lookup dropdown anchors to the row-egd button; keep the dropdown inside the cell. */
+.gtr-row-egd-lookup-btn {
+    position: relative;
+}
+
+.gtr-row-error {
+    color: #b32d2e;
+    font-size: 12px;
+    margin-top: 4px;
+    max-width: 200px;
+    white-space: normal;
+}

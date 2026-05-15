@@ -87,6 +87,73 @@ class GTR_Database {
     }
 
     /**
+     * Update an existing registration.
+     *
+     * Only editable fields are written. `id`, `tournament_slug`, and `registration_date`
+     * are never touched here.
+     *
+     * @param int $id Registration id
+     * @param array $data Same shape as insert_registration (rounds may be an array of ints)
+     * @return bool
+     */
+    public static function update_registration($id, $data) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        $rounds = null;
+        if (!empty($data['rounds']) && is_array($data['rounds'])) {
+            $valid_rounds = array_filter(array_map('intval', $data['rounds']), function ($r) {
+                return $r > 0 && $r <= 20;
+            });
+            if (!empty($valid_rounds)) {
+                sort($valid_rounds);
+                $rounds = implode(',', $valid_rounds);
+            }
+        }
+
+        $gor = null;
+        if (isset($data['gor']) && $data['gor'] !== '' && is_numeric($data['gor'])) {
+            $gor = max(0, intval($data['gor']));
+        }
+
+        $result = $wpdb->update(
+            $table_name,
+            array(
+                'first_name' => sanitize_text_field($data['first_name']),
+                'last_name' => sanitize_text_field($data['last_name']),
+                'player_strength' => sanitize_text_field($data['player_strength']),
+                'country' => sanitize_text_field($data['country']),
+                'email' => sanitize_email($data['email']),
+                'egd_number' => !empty($data['egd_number']) ? sanitize_text_field($data['egd_number']) : null,
+                'gor' => $gor,
+                'phone_number' => sanitize_text_field($data['phone_number']),
+                'rounds' => $rounds,
+            ),
+            array('id' => (int) $id),
+            array('%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s'),
+            array('%d')
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Fetch a single registration by id, or null if not found.
+     */
+    public static function get_registration($id) {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", (int) $id)
+        );
+
+        return $row ?: null;
+    }
+
+    /**
      * Get all registrations
      * @param string|null $tournament_slug Filter by tournament (null = all tournaments)
      */
@@ -192,8 +259,9 @@ class GTR_Database {
      * Check if email already exists in a tournament
      * @param string $email The email to check
      * @param string $tournament_slug The tournament to check within
+     * @param int|null $exclude_id Optionally skip this registration id (used when editing a row)
      */
-    public static function email_exists($email, $tournament_slug = 'default') {
+    public static function email_exists($email, $tournament_slug = 'default', $exclude_id = null) {
         if (empty($email)) {
             return false;
         }
@@ -202,13 +270,24 @@ class GTR_Database {
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
 
-        $count = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name WHERE email = %s AND tournament_slug = %s",
-                $email,
-                $tournament_slug
-            )
-        );
+        if ($exclude_id !== null) {
+            $count = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM $table_name WHERE email = %s AND tournament_slug = %s AND id <> %d",
+                    $email,
+                    $tournament_slug,
+                    (int) $exclude_id
+                )
+            );
+        } else {
+            $count = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*) FROM $table_name WHERE email = %s AND tournament_slug = %s",
+                    $email,
+                    $tournament_slug
+                )
+            );
+        }
 
         return $count > 0;
     }
