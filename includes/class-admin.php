@@ -356,11 +356,11 @@ class GTR_Admin {
     }
 
     /**
-     * Convert player strength to OpenGotha rank format (e.g., "3d" -> "3D", "5k" -> "5K")
+     * Convert player strength to OpenGotha/MacMahon rank format (e.g., "3d" -> "3D", "5k" -> "5K")
      * @param string $strength Player strength
-     * @return string OpenGotha rank format
+     * @return string Normalised rank format
      */
-    private function strength_to_rank($strength) {
+    public static function strength_to_rank($strength) {
         $strength = strtolower(trim($strength));
         if (preg_match('/^(\d+)\s*([dk])$/i', $strength, $matches)) {
             return $matches[1] . strtoupper($matches[2]);
@@ -374,7 +374,7 @@ class GTR_Admin {
      * @param int $total_rounds Total number of rounds
      * @return string Binary string (e.g., "1101" for rounds 1,2,4 of 4)
      */
-    private function rounds_to_binary($rounds, $total_rounds) {
+    public static function rounds_to_binary($rounds, $total_rounds) {
         if (empty($rounds) || $total_rounds <= 0) {
             return str_repeat('1', max($total_rounds, 1));
         }
@@ -385,6 +385,36 @@ class GTR_Admin {
             $binary .= in_array($i, $selected) ? '1' : '0';
         }
         return $binary;
+    }
+
+    /**
+     * Format a single registration as a MacMahon import line.
+     *
+     * Per the MacMahon 3.x spec (https://www.cgerlach.de/go/macmahon-documentation.html):
+     *   surname|firstname|strength|country|club|rating|registration|playinginrounds
+     *   - separator: '|'
+     *   - strength: number + d/p means dan/pro, anything else is kyu
+     *   - country: internet code, case-insensitive (emitted upper-case)
+     *   - registration: 'f' final, 'p' preliminary
+     *   - playinginrounds: binary string ('11100' = rounds 1-3)
+     *
+     * @param object $registration Registration row (last_name, first_name, player_strength,
+     *                             country, gor, rounds)
+     * @param int    $total_rounds Total rounds in the tournament (0 => default to all-1s)
+     * @return string The formatted line, without trailing newline
+     */
+    public static function format_macmahon_line($registration, $total_rounds = 0) {
+        $fields = array(
+            $registration->last_name,
+            $registration->first_name,
+            self::strength_to_rank($registration->player_strength),
+            strtoupper($registration->country),
+            '',
+            $registration->gor ?? '',
+            'f',
+            self::rounds_to_binary($registration->rounds, $total_rounds),
+        );
+        return implode('|', $fields);
     }
 
     /**
@@ -471,17 +501,7 @@ class GTR_Admin {
         echo "\n";
 
         foreach ($registrations as $registration) {
-            $fields = array(
-                $registration->last_name,
-                $registration->first_name,
-                $this->strength_to_rank($registration->player_strength),
-                strtoupper($registration->country),
-                '', // club (not collected)
-                $registration->gor ?? '',
-                'f', // registration status: final
-                $this->rounds_to_binary($registration->rounds, $total_rounds)
-            );
-            echo implode('|', $fields) . "\n";
+            echo self::format_macmahon_line($registration, $total_rounds) . "\n";
         }
     }
 }
