@@ -46,6 +46,51 @@ class RegistrationValidatorTest extends TestCase {
         $this->assertArrayHasKey('first_name', $errors);
     }
 
+    public function testLastNameMaxLength() {
+        $errors = GTR_Registration_Validator::validate($this->validInput(array(
+            'last_name' => str_repeat('a', 31),
+        )));
+        $this->assertArrayHasKey('last_name', $errors);
+
+        $ok = GTR_Registration_Validator::validate($this->validInput(array(
+            'last_name' => str_repeat('a', 30),
+        )));
+        $this->assertArrayNotHasKey('last_name', $ok);
+    }
+
+    public function testCountryRequired() {
+        $errors = GTR_Registration_Validator::validate($this->validInput(array(
+            'country' => '',
+        )));
+        $this->assertSame('Country is required.', $errors['country']);
+    }
+
+    public function testCountryNotInAllowlistRejected() {
+        $errors = GTR_Registration_Validator::validate($this->validInput(array(
+            'country' => 'XX',
+        )));
+        $this->assertSame('Country is invalid.', $errors['country']);
+    }
+
+    public function testCountryAllowlistAcceptsKnownCode() {
+        $errors = GTR_Registration_Validator::validate($this->validInput(array(
+            'country' => 'SE',
+        )));
+        $this->assertArrayNotHasKey('country', $errors);
+    }
+
+    public function testPhoneNumberMaxLength() {
+        $errors = GTR_Registration_Validator::validate($this->validInput(array(
+            'phone_number' => str_repeat('1', 21),
+        )));
+        $this->assertArrayHasKey('phone_number', $errors);
+
+        $ok = GTR_Registration_Validator::validate($this->validInput(array(
+            'phone_number' => str_repeat('1', 20),
+        )));
+        $this->assertArrayNotHasKey('phone_number', $ok);
+    }
+
     public function testEmailFormat() {
         $errors = GTR_Registration_Validator::validate($this->validInput(array(
             'email' => 'not-an-email',

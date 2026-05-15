@@ -50,6 +50,8 @@ class GTR_Registration_Validator {
         $country = isset($data['country']) ? (string) $data['country'] : '';
         if ($country === '') {
             $errors['country'] = 'Country is required.';
+        } elseif (!array_key_exists($country, GTR_Form_Handler::get_country_list())) {
+            $errors['country'] = 'Country is invalid.';
         }
 
         $email = isset($data['email']) ? (string) $data['email'] : '';
@@ -62,6 +64,8 @@ class GTR_Registration_Validator {
         $phone = isset($data['phone_number']) ? (string) $data['phone_number'] : '';
         if ($phone === '') {
             $errors['phone_number'] = 'Phone number is required.';
+        } elseif (strlen($phone) > 20) {
+            $errors['phone_number'] = 'Phone number must not exceed 20 characters.';
         }
 
         $egd_number = isset($data['egd_number']) ? (string) $data['egd_number'] : '';

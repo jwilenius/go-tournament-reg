@@ -122,8 +122,19 @@
                 if (data.has_more && data.search_url) {
                     var overflow = document.createElement('div');
                     overflow.className = 'gtr-egd-overflow';
-                    overflow.innerHTML = '<span>More than 10 results found.</span> ' +
-                        '<a href="' + escapeAttr(data.search_url) + '" target="_blank" rel="noopener">Search on EGD website</a>';
+
+                    var label = document.createElement('span');
+                    label.textContent = 'More than 10 results found.';
+                    overflow.appendChild(label);
+                    overflow.appendChild(document.createTextNode(' '));
+
+                    var link = document.createElement('a');
+                    link.href = data.search_url;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.textContent = 'Search on EGD website';
+                    overflow.appendChild(link);
+
                     dropdown.appendChild(overflow);
                 }
             }
@@ -252,12 +263,6 @@
         var div = document.createElement('div');
         div.textContent = String(str);
         return div.innerHTML;
-    }
-
-    function escapeAttr(str) {
-        if (!str) return '';
-        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-                  .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function cssEscape(value) {

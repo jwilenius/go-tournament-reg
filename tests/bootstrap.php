@@ -159,4 +159,23 @@ if (!class_exists('GTR_Database')) {
     }
 }
 
+/**
+ * Minimal stub for GTR_Form_Handler::get_country_list — the validator now uses it
+ * to check the country against the allowlist.
+ */
+if (!class_exists('GTR_Form_Handler')) {
+    class GTR_Form_Handler {
+        public static function get_country_list() {
+            return array(
+                'DE' => 'Germany',
+                'FR' => 'France',
+                'GB' => 'United Kingdom',
+                'US' => 'United States',
+                'SE' => 'Sweden',
+                'JP' => 'Japan',
+            );
+        }
+    }
+}
+
 require_once __DIR__ . '/../includes/class-registration-validator.php';
