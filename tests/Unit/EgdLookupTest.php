@@ -33,6 +33,12 @@ class EgdLookupTest extends TestCase {
         $this->assertEquals('John Smith', sanitize_egd_input("John\nSmith"));
     }
 
+    public function testSanitizeEgdInputPreservesUnderscoreInSurnames() {
+        // EGD stores some surnames literally with underscores (e.g. "Agren_Thune").
+        // The sanitizer must keep them so the API lookup matches.
+        $this->assertEquals('Agren_Thune', sanitize_egd_input('Agren_Thune'));
+    }
+
     public function testGorToStrengthStandardValues() {
         $this->assertEquals('3d', gor_to_strength(2300));
         $this->assertEquals('1d', gor_to_strength(2100));

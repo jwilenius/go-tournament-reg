@@ -78,7 +78,7 @@ function validate_player_strength($strength) {
 function sanitize_egd_input($input) {
     $sanitized = sanitize_text_field($input);
     $sanitized = preg_replace('/[\r\n\t\x00-\x1F\x7F]/u', ' ', $sanitized);
-    $sanitized = preg_replace('/[^\p{L}\s\-\']/u', '', $sanitized);
+    $sanitized = preg_replace('/[^\p{L}\s\-\'_]/u', '', $sanitized);
     $sanitized = preg_replace('/\s+/', ' ', $sanitized);
     return trim($sanitized);
 }
