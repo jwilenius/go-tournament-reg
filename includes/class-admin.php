@@ -268,6 +268,11 @@ class GTR_Admin {
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if ($tournament_filter): ?>
+                        <span class="gtr-total-count">
+                            &mdash; Total: <strong><?php echo count($registrations); ?></strong> registration(s)
+                        </span>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -346,11 +351,6 @@ class GTR_Admin {
                     >
                         Delete Tournament
                     </a>
-
-                    <span class="gtr-total-count">
-                        Tournament: <strong><?php echo esc_html($tournament_filter); ?></strong> -
-                        Total: <strong><?php echo count($registrations); ?></strong> registration(s)
-                    </span>
                 </div>
 
                 <script>
