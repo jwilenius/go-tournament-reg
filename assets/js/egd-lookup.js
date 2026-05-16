@@ -195,9 +195,17 @@
                 gor: player.gor
             };
 
+            // Preserve the user's diacritic spelling for first/last name when
+            // it's the same person, just folded differently. "Ström" entered +
+            // "Stroem" selected ⇒ keep "Ström". "Ström" + "Stroemberger" ⇒
+            // overwrite, because there's no fold-equivalence match.
             for (var key in values) {
                 if (!Object.prototype.hasOwnProperty.call(values, key)) continue;
                 if (!values[key] && values[key] !== 0) continue;
+                if ((key === 'first_name' || key === 'last_name')
+                        && namesAreFoldEquivalent(readField(key), values[key])) {
+                    continue;
+                }
                 writeField(key, values[key]);
             }
             closeDropdown();
@@ -256,6 +264,60 @@
             }
         }
         return merged;
+    }
+
+    // Character fold tables, kept in sync with the PHP-side
+    // transliterate_simple / transliterate_double helpers in
+    // includes/class-form-handler.php. Update both sides together.
+    var SIMPLE_FOLD = {
+        'Å': 'A', 'å': 'a', 'Ä': 'A', 'ä': 'a',
+        'Ö': 'O', 'ö': 'o', 'Ø': 'O', 'ø': 'o',
+        'Ü': 'U', 'ü': 'u',
+        'É': 'E', 'é': 'e', 'È': 'E', 'è': 'e', 'Ê': 'E', 'ê': 'e',
+        'Á': 'A', 'á': 'a', 'À': 'A', 'à': 'a', 'Â': 'A', 'â': 'a',
+        'Í': 'I', 'í': 'i', 'Î': 'I', 'î': 'i',
+        'Ó': 'O', 'ó': 'o', 'Ô': 'O', 'ô': 'o',
+        'Ú': 'U', 'ú': 'u', 'Û': 'U', 'û': 'u',
+        'Ñ': 'N', 'ñ': 'n',
+        'Č': 'C', 'č': 'c', 'Š': 'S', 'š': 's', 'Ž': 'Z', 'ž': 'z',
+        'ß': 'ss'
+    };
+    var DOUBLE_FOLD = {
+        'Å': 'Aa', 'å': 'aa', 'Ä': 'Ae', 'ä': 'ae',
+        'Ö': 'Oe', 'ö': 'oe', 'Ø': 'Oe', 'ø': 'oe',
+        'Ü': 'Ue', 'ü': 'ue', 'ß': 'ss'
+    };
+
+    function applyFold(str, table) {
+        var out = '';
+        for (var i = 0; i < str.length; i++) {
+            var ch = str.charAt(i);
+            out += Object.prototype.hasOwnProperty.call(table, ch) ? table[ch] : ch;
+        }
+        return out;
+    }
+
+    function namesAreFoldEquivalent(typed, candidate) {
+        if (typed === null || typed === undefined || candidate === null || candidate === undefined) {
+            return false;
+        }
+        var t = String(typed).trim();
+        var c = String(candidate).trim();
+        if (t === '' || c === '') return false;
+
+        // Both names get reduced to their two folds; if any pair matches
+        // case-insensitively, the names refer to the same string modulo
+        // character translation. Acute accents fold the same way under both
+        // tables, so two folds cover the full mapping space.
+        var typedSimple = applyFold(t, SIMPLE_FOLD).toLowerCase();
+        var typedDouble = applyFold(applyFold(t, DOUBLE_FOLD), SIMPLE_FOLD).toLowerCase();
+        var candSimple = applyFold(c, SIMPLE_FOLD).toLowerCase();
+        var candDouble = applyFold(applyFold(c, DOUBLE_FOLD), SIMPLE_FOLD).toLowerCase();
+
+        return typedSimple === candSimple
+            || typedSimple === candDouble
+            || typedDouble === candSimple
+            || typedDouble === candDouble;
     }
 
     function escapeHtml(str) {
