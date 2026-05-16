@@ -80,6 +80,136 @@ class EgdLookupTest extends TestCase {
         $this->assertEquals('', sanitize_country_code('<script>'));
     }
 
+    public function testFirstNameSegmentSplitsOnHyphen() {
+        $this->assertEquals('Ågren', first_name_segment('Ågren-Thué'));
+        $this->assertEquals('Mary', first_name_segment('Mary-Jane'));
+    }
+
+    public function testFirstNameSegmentSplitsOnSpace() {
+        $this->assertEquals('Ågren', first_name_segment('Ågren Thué'));
+        $this->assertEquals('Jean', first_name_segment('Jean Paul'));
+    }
+
+    public function testFirstNameSegmentReturnsSimpleNameUnchanged() {
+        $this->assertEquals('Smith', first_name_segment('Smith'));
+        $this->assertEquals('Müller', first_name_segment('Müller'));
+    }
+
+    public function testFirstNameSegmentHandlesEmpty() {
+        $this->assertEquals('', first_name_segment(''));
+    }
+
+    public function testTransliterateSimpleFoldsAccents() {
+        $this->assertEquals('Agren', transliterate_simple('Ågren'));
+        $this->assertEquals('Thue', transliterate_simple('Thué'));
+        $this->assertEquals('Muller', transliterate_simple('Müller'));
+        $this->assertEquals('Oberg', transliterate_simple('Öberg'));
+        $this->assertEquals('Capek', transliterate_simple('Čapek'));
+    }
+
+    public function testTransliterateSimpleLeavesPlainAsciiUnchanged() {
+        $this->assertEquals('Smith', transliterate_simple('Smith'));
+        $this->assertEquals('Mary-Jane', transliterate_simple('Mary-Jane'));
+    }
+
+    public function testTransliterateDoubleExpandsVowelMarks() {
+        // Matches the EGD-stored forms of real Swedish/German players:
+        //   "Aagren" (Å→Aa), "Lindstroem" (ö→oe), "Mueller" (ü→ue), "Bjoern" (ö→oe).
+        $this->assertEquals('Aagren', transliterate_double('Ågren'));
+        $this->assertEquals('Lindstroem', transliterate_double('Lindström'));
+        $this->assertEquals('Mueller', transliterate_double('Müller'));
+        $this->assertEquals('Bjoern', transliterate_double('Björn'));
+        $this->assertEquals('Oeyvind', transliterate_double('Øyvind'));
+    }
+
+    public function testTransliterateDoubleFoldsAcutesToPlainLetter() {
+        // EGD stores "Thune" for the player whose name is originally "Thuné" —
+        // so acutes fold to e, not "ee".
+        $this->assertEquals('Thune', transliterate_double('Thuné'));
+        $this->assertEquals('Jose', transliterate_double('José'));
+    }
+
+    public function testTransliterateHandlesEmpty() {
+        $this->assertEquals('', transliterate_simple(''));
+        $this->assertEquals('', transliterate_double(''));
+    }
+
+    public function testMergeEgdResultsUnionsDistinctPlayers() {
+        $simple = array(
+            'players' => array(array('pin' => '111', 'last_name' => 'Agren_Thune')),
+            'total' => 1, 'has_more' => false, 'search_url' => '',
+        );
+        $double = array(
+            'players' => array(array('pin' => '222', 'last_name' => 'Aagren')),
+            'total' => 1, 'has_more' => false, 'search_url' => '',
+        );
+        $merged = merge_egd_results(array($simple, $double));
+
+        $this->assertCount(2, $merged['players']);
+        $this->assertEquals('111', $merged['players'][0]['pin']);
+        $this->assertEquals('222', $merged['players'][1]['pin']);
+    }
+
+    public function testMergeEgdResultsDedupesByPin() {
+        $a = array(
+            'players' => array(array('pin' => '111', 'last_name' => 'X')),
+            'total' => 1, 'has_more' => false, 'search_url' => '',
+        );
+        $b = array(
+            'players' => array(
+                array('pin' => '111', 'last_name' => 'X'),
+                array('pin' => '222', 'last_name' => 'Y'),
+            ),
+            'total' => 2, 'has_more' => false, 'search_url' => '',
+        );
+        $merged = merge_egd_results(array($a, $b));
+
+        $this->assertCount(2, $merged['players']);
+        $pins = array_column($merged['players'], 'pin');
+        $this->assertEquals(array('111', '222'), $pins);
+    }
+
+    public function testMergeEgdResultsCapsAtTen() {
+        $players_a = array();
+        for ($i = 0; $i < 8; $i++) {
+            $players_a[] = array('pin' => 'A' . $i);
+        }
+        $players_b = array();
+        for ($i = 0; $i < 8; $i++) {
+            $players_b[] = array('pin' => 'B' . $i);
+        }
+        $merged = merge_egd_results(array(
+            array('players' => $players_a, 'total' => 8, 'has_more' => false, 'search_url' => ''),
+            array('players' => $players_b, 'total' => 8, 'has_more' => false, 'search_url' => ''),
+        ));
+
+        $this->assertCount(10, $merged['players']);
+    }
+
+    public function testMergeEgdResultsCarriesHasMoreAndSearchUrl() {
+        $overflowing = array(
+            'players' => array(array('pin' => '111')),
+            'total' => 50,
+            'has_more' => true,
+            'search_url' => 'https://example.com/search',
+        );
+        $small = array(
+            'players' => array(array('pin' => '222')),
+            'total' => 1, 'has_more' => false, 'search_url' => '',
+        );
+        $merged = merge_egd_results(array($small, $overflowing));
+
+        $this->assertTrue($merged['has_more']);
+        $this->assertEquals('https://example.com/search', $merged['search_url']);
+    }
+
+    public function testMergeEgdResultsHandlesEmptyInputs() {
+        $merged = merge_egd_results(array());
+        $this->assertEquals(array(), $merged['players']);
+        $this->assertFalse($merged['has_more']);
+        $this->assertEquals('', $merged['search_url']);
+    }
+
     public function testEgdRateLimitingBlocksAfterTenRequests() {
         $_SERVER['REMOTE_ADDR'] = '192.168.1.100';
 

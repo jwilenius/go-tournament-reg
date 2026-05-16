@@ -167,13 +167,191 @@ class GTR_Form_Handler {
             wp_send_json_error(array('message' => 'Please enter at least a name or select a country.'), 400);
         }
 
-        $result = $this->fetch_egd_players($last_name, $first_name, $country);
+        $result = $this->lookup_with_fallback($last_name, $first_name, $country);
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()), 500);
         }
 
         wp_send_json_success($result);
+    }
+
+    /**
+     * Run the EGD lookup cascade for a name pair.
+     *
+     * EGD currently does loose prefix matching on the raw UTF-8 query bytes,
+     * so a query like "?lastname=Ström" returns whatever happens to share a
+     * leading-byte prefix ("Strmiska", etc.) — not real "Ström" people. Real
+     * matches live only under the fold-form spellings ("Strom", "Stroem").
+     * EGD also stores both fold conventions in production ("Lindstrom" and
+     * "Lindstroem" are real Swedish surnames for different players), so the
+     * only reliable answer is the union of all variants.
+     *
+     * Stages:
+     *  1. Union of three queries: as-entered, simple fold (Å→A, ö→o, ü→u,
+     *     é→e), and double-letter fold (Å→Aa, ö→oe, ü→ue, é→e). Deduped by
+     *     PIN. Duplicate queries (e.g. plain ASCII input where all three
+     *     reduce to the same string) are skipped.
+     *  2. If 1 returns nothing, retry the same union using the first segment
+     *     of each compound name ("Ågren-Thué" → "Ågren") to handle hyphenated
+     *     or spaced surnames whose EGD record stores only one part.
+     *
+     * @return array|WP_Error EGD result payload, or a WP_Error from the
+     *                        underlying HTTP/JSON layer if a query failed.
+     */
+    private function lookup_with_fallback($last_name, $first_name, $country) {
+        $full = $this->fetch_union($last_name, $first_name, $country);
+        if (is_wp_error($full) || !empty($full['players'])) {
+            return $full;
+        }
+
+        $segment_last = $this->first_name_segment($last_name);
+        $segment_first = $this->first_name_segment($first_name);
+        if ($segment_last === $last_name && $segment_first === $first_name) {
+            return $full;
+        }
+
+        $segment = $this->fetch_union($segment_last, $segment_first, $country);
+        if (is_wp_error($segment) || !empty($segment['players'])) {
+            return $segment;
+        }
+        return $full;
+    }
+
+    /**
+     * Query EGD with as-entered + both fold variants and return the merged
+     * union, deduped by Pin_Player. Variants that collapse to the same query
+     * are issued only once.
+     *
+     * @return array|WP_Error
+     */
+    private function fetch_union($last_name, $first_name, $country) {
+        $variants = array(
+            array($last_name, $first_name),
+            array($this->transliterate_simple($last_name), $this->transliterate_simple($first_name)),
+            array($this->transliterate_double($last_name), $this->transliterate_double($first_name)),
+        );
+
+        $results = array();
+        $seen_keys = array();
+        foreach ($variants as $variant) {
+            list($last, $first) = $variant;
+            $key = $last . "\0" . $first;
+            if (isset($seen_keys[$key])) {
+                continue;
+            }
+            $seen_keys[$key] = true;
+
+            $attempt = $this->fetch_egd_players($last, $first, $country);
+            if (is_wp_error($attempt)) {
+                return $attempt;
+            }
+            $results[] = $attempt;
+        }
+
+        return $this->merge_egd_results($results);
+    }
+
+    /**
+     * Merge several EGD result payloads into one, deduplicating players by
+     * Pin_Player. The merged list is capped at 10 to match the per-query cap;
+     * if any source query overflowed, has_more is set and its search_url is
+     * carried through so the user can click out to the EGD website.
+     */
+    private function merge_egd_results($results) {
+        $players = array();
+        $seen_pins = array();
+        $has_more = false;
+        $search_url = '';
+        $total = 0;
+
+        foreach ($results as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+            $total += isset($result['total']) ? (int) $result['total'] : 0;
+            if (!empty($result['has_more'])) {
+                $has_more = true;
+                if (empty($search_url) && !empty($result['search_url'])) {
+                    $search_url = $result['search_url'];
+                }
+            }
+            $source_players = isset($result['players']) ? $result['players'] : array();
+            foreach ($source_players as $player) {
+                $pin = isset($player['pin']) ? $player['pin'] : '';
+                if ($pin !== '' && isset($seen_pins[$pin])) {
+                    continue;
+                }
+                if ($pin !== '') {
+                    $seen_pins[$pin] = true;
+                }
+                $players[] = $player;
+                if (count($players) >= 10) {
+                    break 2;
+                }
+            }
+        }
+
+        return array(
+            'players' => $players,
+            'total' => $total,
+            'has_more' => $has_more,
+            'search_url' => $search_url,
+        );
+    }
+
+    /**
+     * Simple accent fold (Å→A, Ö→O, Ü→U, é→e, ø→o). Matches the EGD records
+     * where users entered names without any expansion (e.g. "Lindstrom",
+     * "Soderberg", "Agren_Thune").
+     */
+    private function transliterate_simple($name) {
+        if ($name === '' || $name === null) {
+            return $name;
+        }
+        if (function_exists('remove_accents')) {
+            return remove_accents($name);
+        }
+        return $name;
+    }
+
+    /**
+     * Double-letter fold for vowels that take an umlaut/ring/slash, matching
+     * the German and Scandinavian conventions stored in EGD for names like
+     * "Mueller", "Lindstroem", "Aagren". Acute accents (é, á, í, …) still fold
+     * to their plain letter — confirmed against EGD's "Thune" record.
+     */
+    private function transliterate_double($name) {
+        if ($name === '' || $name === null) {
+            return $name;
+        }
+        $map = array(
+            'Å' => 'Aa', 'å' => 'aa',
+            'Ä' => 'Ae', 'ä' => 'ae',
+            'Ö' => 'Oe', 'ö' => 'oe',
+            'Ø' => 'Oe', 'ø' => 'oe',
+            'Ü' => 'Ue', 'ü' => 'ue',
+            'ß' => 'ss',
+        );
+        $expanded = strtr($name, $map);
+        // Fold any remaining accents (acutes, graves, carons, tildes) the simple way.
+        return $this->transliterate_simple($expanded);
+    }
+
+    /**
+     * Return the first segment of a compound name, splitting on spaces or hyphens.
+     * Used to broaden EGD lookups when the full compound form yields no matches
+     * (e.g. "Ågren-Thué" or "Ågren Thué" → "Ågren").
+     */
+    private function first_name_segment($name) {
+        if ($name === '' || $name === null) {
+            return $name;
+        }
+        $parts = preg_split('/[\s\-]+/u', $name, 2);
+        if (!is_array($parts) || $parts[0] === '') {
+            return $name;
+        }
+        return $parts[0];
     }
 
     /**

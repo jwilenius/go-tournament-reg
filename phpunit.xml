@@ -4,10 +4,14 @@
     colors="true"
     verbose="true"
     stopOnFailure="false"
+    defaultTestSuite="Unit"
 >
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
 </phpunit>

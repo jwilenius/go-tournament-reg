@@ -108,6 +108,115 @@ function sanitize_country_code($code) {
 }
 
 /**
+ * Standalone simple-fold transliteration for testing. The production code
+ * delegates to WordPress's remove_accents(); here we use a small deterministic
+ * map covering the characters our tests exercise.
+ */
+function transliterate_simple($name) {
+    if ($name === '' || $name === null) {
+        return $name;
+    }
+    $map = array(
+        'Å' => 'A', 'å' => 'a',
+        'Ä' => 'A', 'ä' => 'a',
+        'Ö' => 'O', 'ö' => 'o',
+        'Ø' => 'O', 'ø' => 'o',
+        'É' => 'E', 'é' => 'e',
+        'È' => 'E', 'è' => 'e',
+        'Ê' => 'E', 'ê' => 'e',
+        'Ü' => 'U', 'ü' => 'u',
+        'Ú' => 'U', 'ú' => 'u',
+        'Č' => 'C', 'č' => 'c',
+        'Š' => 'S', 'š' => 's',
+        'Ž' => 'Z', 'ž' => 'z',
+        'Ñ' => 'N', 'ñ' => 'n',
+        'ß' => 'ss',
+    );
+    return strtr($name, $map);
+}
+
+/**
+ * Standalone double-letter transliteration for testing (Å→Aa, Ö→Oe, Ü→Ue, …).
+ * Acute accents still fold to their plain letter — matches the convention EGD
+ * stores for the "Thune" surname (originally "Thuné").
+ */
+function transliterate_double($name) {
+    if ($name === '' || $name === null) {
+        return $name;
+    }
+    $map = array(
+        'Å' => 'Aa', 'å' => 'aa',
+        'Ä' => 'Ae', 'ä' => 'ae',
+        'Ö' => 'Oe', 'ö' => 'oe',
+        'Ø' => 'Oe', 'ø' => 'oe',
+        'Ü' => 'Ue', 'ü' => 'ue',
+        'ß' => 'ss',
+    );
+    return transliterate_simple(strtr($name, $map));
+}
+
+/**
+ * Standalone implementation of compound-name first-segment extraction for testing
+ */
+function first_name_segment($name) {
+    if ($name === '' || $name === null) {
+        return $name;
+    }
+    $parts = preg_split('/[\s\-]+/u', $name, 2);
+    if (!is_array($parts) || $parts[0] === '') {
+        return $name;
+    }
+    return $parts[0];
+}
+
+/**
+ * Standalone mirror of the EGD result merger used by lookup_with_fallback().
+ * Dedupes by pin, caps at 10, carries has_more / search_url from any source
+ * that overflowed.
+ */
+function merge_egd_results($results) {
+    $players = array();
+    $seen_pins = array();
+    $has_more = false;
+    $search_url = '';
+    $total = 0;
+
+    foreach ($results as $result) {
+        if (!is_array($result)) {
+            continue;
+        }
+        $total += isset($result['total']) ? (int) $result['total'] : 0;
+        if (!empty($result['has_more'])) {
+            $has_more = true;
+            if ($search_url === '' && !empty($result['search_url'])) {
+                $search_url = $result['search_url'];
+            }
+        }
+        $source_players = isset($result['players']) ? $result['players'] : array();
+        foreach ($source_players as $player) {
+            $pin = isset($player['pin']) ? $player['pin'] : '';
+            if ($pin !== '' && isset($seen_pins[$pin])) {
+                continue;
+            }
+            if ($pin !== '') {
+                $seen_pins[$pin] = true;
+            }
+            $players[] = $player;
+            if (count($players) >= 10) {
+                break 2;
+            }
+        }
+    }
+
+    return array(
+        'players' => $players,
+        'total' => $total,
+        'has_more' => $has_more,
+        'search_url' => $search_url,
+    );
+}
+
+/**
  * Get country list for testing
  */
 function get_country_list() {
