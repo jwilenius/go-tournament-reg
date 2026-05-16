@@ -65,6 +65,18 @@ class GTR_Display {
         delete_transient('gtr_form_data');
         delete_transient('gtr_form_errors');
 
+        if (GTR_Database::is_tournament_locked($tournament_slug)) {
+            ?>
+            <div id="gtr-registration" class="gtr-registration-form gtr-registration-locked">
+                <h2>Tournament Registration <a href="#gtr-registration" class="gtr-anchor-link" title="Copy link to this section">&#x1F517;</a></h2>
+                <div class="gtr-message gtr-locked-notice">
+                    Registration is currently closed for this tournament.
+                </div>
+            </div>
+            <?php
+            return;
+        }
+
         $countries = GTR_Form_Handler::get_country_list();
 
         ?>

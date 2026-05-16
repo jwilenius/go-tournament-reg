@@ -372,4 +372,25 @@ class GTR_Database {
     public static function get_tournament_rounds($tournament_slug) {
         return intval(get_option('gtr_tournament_rounds_' . sanitize_key($tournament_slug), 0));
     }
+
+    /**
+     * Set the locked flag for a tournament. When locked, new public
+     * registrations are refused.
+     */
+    public static function set_tournament_locked($tournament_slug, $locked) {
+        update_option(
+            'gtr_tournament_locked_' . sanitize_key($tournament_slug),
+            $locked ? 1 : 0
+        );
+    }
+
+    /**
+     * @return bool True if the tournament has been locked by an admin.
+     */
+    public static function is_tournament_locked($tournament_slug) {
+        return (bool) get_option(
+            'gtr_tournament_locked_' . sanitize_key($tournament_slug),
+            0
+        );
+    }
 }

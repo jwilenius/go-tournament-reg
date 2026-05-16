@@ -56,6 +56,27 @@ class GTR_Admin {
             exit;
         }
 
+        // Toggle the registration lock for a tournament
+        if (isset($_GET['action']) && $_GET['action'] === 'toggle_lock' && isset($_GET['tournament'])) {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_toggle_lock')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_slug = sanitize_text_field($_GET['tournament']);
+            $new_state = !GTR_Database::is_tournament_locked($tournament_slug);
+            GTR_Database::set_tournament_locked($tournament_slug, $new_state);
+
+            $redirect_url = add_query_arg(
+                array(
+                    'tournament' => $tournament_slug,
+                    $new_state ? 'locked' : 'unlocked' => 1,
+                ),
+                admin_url('admin.php?page=go-tournament-registration')
+            );
+            wp_redirect($redirect_url);
+            exit;
+        }
+
         // Handle bulk delete by tournament
         if (isset($_GET['action']) && $_GET['action'] === 'delete_all' && isset($_GET['tournament'])) {
             if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_delete_all_tournament')) {
@@ -146,6 +167,18 @@ class GTR_Admin {
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($_GET['locked'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Registration locked. New sign-ups will be rejected until you unlock.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['unlocked'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Registration unlocked. The form is open again.</p>
+                </div>
+            <?php endif; ?>
+
             <div class="notice notice-info">
                 <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament" rounds="N"]</code> to add a registration form.</p>
                 <p>Example: <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code></p>
@@ -183,6 +216,23 @@ class GTR_Admin {
                     </a>
                     <a href="<?php echo wp_nonce_url($export_macmahon_url, 'gtr_export_macmahon'); ?>" class="button button-secondary">
                         Export for MacMahon
+                    </a>
+
+                    <?php
+                    $is_locked = GTR_Database::is_tournament_locked($tournament_filter);
+                    $toggle_lock_url = wp_nonce_url(
+                        admin_url('admin.php?page=go-tournament-registration&action=toggle_lock&tournament=' . urlencode($tournament_filter)),
+                        'gtr_toggle_lock'
+                    );
+                    ?>
+                    <a
+                        href="<?php echo esc_url($toggle_lock_url); ?>"
+                        class="button button-secondary"
+                        style="<?php echo $is_locked
+                            ? 'background: #f0ad4e; border-color: #eea236; color: white;'
+                            : 'background: #5bc0de; border-color: #46b8da; color: white;'; ?>"
+                    >
+                        <?php echo $is_locked ? 'Unlock Registration' : 'Lock Registration'; ?>
                     </a>
 
                     <?php if (!empty($registrations)): ?>

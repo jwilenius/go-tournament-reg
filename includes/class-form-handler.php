@@ -45,6 +45,13 @@ class GTR_Form_Handler {
             wp_die('Security check failed');
         }
 
+        // Refuse submissions when the tournament has been locked by an admin.
+        $tournament_slug = sanitize_text_field($_POST['tournament_slug'] ?? 'default');
+        if (GTR_Database::is_tournament_locked($tournament_slug)) {
+            set_transient('gtr_form_errors', array('locked' => 'Registration for this tournament is currently locked.'), 45);
+            return;
+        }
+
         // Check rate limit
         if (!$this->check_rate_limit()) {
             set_transient('gtr_form_errors', array('rate_limit' => 'Too many submissions. Please try again later.'), 45);

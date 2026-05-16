@@ -48,6 +48,13 @@
     padding-left: 20px;
 }
 
+.gtr-locked-notice {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    color: #856404;
+    font-weight: 600;
+}
+
 /* Registration Form */
 .gtr-registration-form {
     background: #fff;
