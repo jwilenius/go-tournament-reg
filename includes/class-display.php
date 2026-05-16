@@ -24,10 +24,39 @@ class GTR_Display {
         }
 
         self::render_messages();
+
+        // Archived tournaments hide both the form and the participant list,
+        // showing only the "ended with N participants" banner. The participant
+        // count comes from the snapshot taken at archive time (preserved across
+        // later "Delete All" operations) and falls back to the live count if
+        // no snapshot exists.
+        if (GTR_Database::is_tournament_archived($tournament_slug)) {
+            $snapshot = GTR_Database::get_tournament_final_count($tournament_slug);
+            $count = $snapshot !== null
+                ? $snapshot
+                : GTR_Database::get_registration_count($tournament_slug);
+            self::render_archived_banner($count);
+            echo '</div>';
+            return;
+        }
+
         self::render_registration_form($tournament_slug, $rounds);
         self::render_participant_list($tournament_slug);
 
         echo '</div>';
+    }
+
+    /**
+     * Render the "tournament has ended" banner shown when archived.
+     */
+    private static function render_archived_banner($count) {
+        ?>
+        <div id="gtr-registration" class="gtr-registration-form gtr-registration-archived">
+            <div class="gtr-message gtr-archived-notice">
+                Tournament has ended with <?php echo intval($count); ?> participants registered.
+            </div>
+        </div>
+        <?php
     }
 
     /**

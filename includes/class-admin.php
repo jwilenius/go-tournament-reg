@@ -56,6 +56,33 @@ class GTR_Admin {
             exit;
         }
 
+        // Toggle the archived state for a tournament. Archiving also snapshots
+        // the current registration count so the "ended with N participants"
+        // banner survives subsequent deletions.
+        if (isset($_GET['action']) && $_GET['action'] === 'toggle_archive' && isset($_GET['tournament'])) {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_toggle_archive')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_slug = sanitize_text_field($_GET['tournament']);
+            $new_state = !GTR_Database::is_tournament_archived($tournament_slug);
+            GTR_Database::set_tournament_archived($tournament_slug, $new_state);
+            if ($new_state) {
+                $live_count = GTR_Database::get_registration_count($tournament_slug);
+                GTR_Database::set_tournament_final_count($tournament_slug, $live_count);
+            }
+
+            $redirect_url = add_query_arg(
+                array(
+                    'tournament' => $tournament_slug,
+                    $new_state ? 'archived' : 'unarchived' => 1,
+                ),
+                admin_url('admin.php?page=go-tournament-registration')
+            );
+            wp_redirect($redirect_url);
+            exit;
+        }
+
         // Toggle the registration lock for a tournament
         if (isset($_GET['action']) && $_GET['action'] === 'toggle_lock' && isset($_GET['tournament'])) {
             if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_toggle_lock')) {
@@ -179,6 +206,18 @@ class GTR_Admin {
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($_GET['archived'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Tournament archived. The participant list is hidden on the public page; the participant count has been preserved.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['unarchived'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Tournament unarchived. The participant list is visible again.</p>
+                </div>
+            <?php endif; ?>
+
             <div class="notice notice-info">
                 <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament" rounds="N"]</code> to add a registration form.</p>
                 <p>Example: <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code></p>
@@ -220,9 +259,14 @@ class GTR_Admin {
 
                     <?php
                     $is_locked = GTR_Database::is_tournament_locked($tournament_filter);
+                    $is_archived = GTR_Database::is_tournament_archived($tournament_filter);
                     $toggle_lock_url = wp_nonce_url(
                         admin_url('admin.php?page=go-tournament-registration&action=toggle_lock&tournament=' . urlencode($tournament_filter)),
                         'gtr_toggle_lock'
+                    );
+                    $toggle_archive_url = wp_nonce_url(
+                        admin_url('admin.php?page=go-tournament-registration&action=toggle_archive&tournament=' . urlencode($tournament_filter)),
+                        'gtr_toggle_archive'
                     );
                     ?>
                     <a
@@ -233,6 +277,15 @@ class GTR_Admin {
                             : 'background: #5bc0de; border-color: #46b8da; color: white;'; ?>"
                     >
                         <?php echo $is_locked ? 'Unlock Registration' : 'Lock Registration'; ?>
+                    </a>
+                    <a
+                        href="<?php echo esc_url($toggle_archive_url); ?>"
+                        class="button button-secondary"
+                        style="<?php echo $is_archived
+                            ? 'background: #6c757d; border-color: #5a6268; color: white;'
+                            : 'background: #343a40; border-color: #23272b; color: white;'; ?>"
+                    >
+                        <?php echo $is_archived ? 'Unarchive Tournament' : 'Archive Tournament'; ?>
                     </a>
 
                     <?php if (!empty($registrations)): ?>

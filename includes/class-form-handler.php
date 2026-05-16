@@ -45,8 +45,13 @@ class GTR_Form_Handler {
             wp_die('Security check failed');
         }
 
-        // Refuse submissions when the tournament has been locked by an admin.
+        // Refuse submissions when the tournament has been locked or archived.
+        // Archive is a stricter state but also implies the form is closed.
         $tournament_slug = sanitize_text_field($_POST['tournament_slug'] ?? 'default');
+        if (GTR_Database::is_tournament_archived($tournament_slug)) {
+            set_transient('gtr_form_errors', array('archived' => 'This tournament has ended; registration is closed.'), 45);
+            return;
+        }
         if (GTR_Database::is_tournament_locked($tournament_slug)) {
             set_transient('gtr_form_errors', array('locked' => 'Registration for this tournament is currently locked.'), 45);
             return;

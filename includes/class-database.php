@@ -342,14 +342,47 @@ class GTR_Database {
     }
 
     /**
-     * Get all distinct tournament slugs
+     * Get all known tournament slugs — the union of slugs that have at least
+     * one registration AND slugs that only exist as metadata (rounds, lock,
+     * archive, final-count options). The metadata side lets archived or
+     * emptied tournaments stay visible in the admin list after their
+     * registrations have been removed.
      */
     public static function get_all_tournaments() {
         global $wpdb;
 
         $table_name = $wpdb->prefix . GTR_TABLE_NAME;
+        $from_registrations = $wpdb->get_col("SELECT DISTINCT tournament_slug FROM $table_name");
 
-        return $wpdb->get_col("SELECT DISTINCT tournament_slug FROM $table_name ORDER BY tournament_slug");
+        // Pull slugs out of any gtr_tournament_*_<slug> option name. The order
+        // of the alternation defines the order each prefix is stripped, so
+        // longer prefixes go first to avoid leaving a residual fragment.
+        $option_rows = $wpdb->get_col(
+            "SELECT option_name FROM $wpdb->options
+             WHERE option_name LIKE 'gtr_tournament_%'"
+        );
+        $prefixes = array(
+            'gtr_tournament_final_count_',
+            'gtr_tournament_archived_',
+            'gtr_tournament_locked_',
+            'gtr_tournament_rounds_',
+        );
+        $from_options = array();
+        foreach ($option_rows as $option_name) {
+            foreach ($prefixes as $prefix) {
+                if (strpos($option_name, $prefix) === 0) {
+                    $slug = substr($option_name, strlen($prefix));
+                    if ($slug !== '') {
+                        $from_options[] = $slug;
+                    }
+                    break;
+                }
+            }
+        }
+
+        $all = array_unique(array_merge((array) $from_registrations, $from_options));
+        sort($all);
+        return $all;
     }
 
     /**
@@ -392,5 +425,52 @@ class GTR_Database {
             'gtr_tournament_locked_' . sanitize_key($tournament_slug),
             0
         );
+    }
+
+    /**
+     * Set the archived flag for a tournament. Archived implies locked at the
+     * submission gate; in addition, the public participant list is hidden
+     * and an "ended" banner is shown.
+     */
+    public static function set_tournament_archived($tournament_slug, $archived) {
+        update_option(
+            'gtr_tournament_archived_' . sanitize_key($tournament_slug),
+            $archived ? 1 : 0
+        );
+    }
+
+    /**
+     * @return bool True if the tournament has been archived by an admin.
+     */
+    public static function is_tournament_archived($tournament_slug) {
+        return (bool) get_option(
+            'gtr_tournament_archived_' . sanitize_key($tournament_slug),
+            0
+        );
+    }
+
+    /**
+     * Snapshot the number of participants at the moment a tournament is
+     * archived, so the "ended with N participants" banner survives later
+     * "Delete All Registrations" actions.
+     */
+    public static function set_tournament_final_count($tournament_slug, $count) {
+        update_option(
+            'gtr_tournament_final_count_' . sanitize_key($tournament_slug),
+            max(0, intval($count))
+        );
+    }
+
+    /**
+     * @return int|null Snapshot count if one was recorded, otherwise null.
+     *                  Callers should fall back to the live registration
+     *                  count when this returns null.
+     */
+    public static function get_tournament_final_count($tournament_slug) {
+        $value = get_option(
+            'gtr_tournament_final_count_' . sanitize_key($tournament_slug),
+            null
+        );
+        return $value === null || $value === false ? null : intval($value);
     }
 }
