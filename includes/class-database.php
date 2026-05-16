@@ -407,6 +407,23 @@ class GTR_Database {
     }
 
     /**
+     * Remove all trace of a tournament: registrations and every
+     * per-tournament option key. Irreversible. Use the admin "Delete
+     * Tournament" action which gates this behind a typed-slug confirmation.
+     *
+     * @return int Number of registration rows removed.
+     */
+    public static function delete_tournament($tournament_slug) {
+        $removed = self::delete_all_by_tournament($tournament_slug);
+        $key = sanitize_key($tournament_slug);
+        delete_option('gtr_tournament_rounds_' . $key);
+        delete_option('gtr_tournament_locked_' . $key);
+        delete_option('gtr_tournament_archived_' . $key);
+        delete_option('gtr_tournament_final_count_' . $key);
+        return (int) $removed;
+    }
+
+    /**
      * Set the locked flag for a tournament. When locked, new public
      * registrations are refused.
      */

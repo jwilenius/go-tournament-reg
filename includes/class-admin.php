@@ -104,6 +104,31 @@ class GTR_Admin {
             exit;
         }
 
+        // Delete a tournament completely: registrations + every metadata
+        // option. Requires a typed-slug confirmation in the `confirm` query
+        // parameter that must match the tournament slug exactly, on top of
+        // the usual nonce check.
+        if (isset($_GET['action']) && $_GET['action'] === 'delete_tournament' && isset($_GET['tournament'])) {
+            if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_delete_tournament')) {
+                wp_die('Security check failed');
+            }
+
+            $tournament_slug = sanitize_text_field($_GET['tournament']);
+            $confirm = isset($_GET['confirm']) ? sanitize_text_field($_GET['confirm']) : '';
+            if ($confirm !== $tournament_slug) {
+                wp_die('Confirmation slug did not match. Tournament not deleted.');
+            }
+
+            $removed = GTR_Database::delete_tournament($tournament_slug);
+
+            $redirect_url = add_query_arg(
+                array('tournament_deleted' => $removed),
+                admin_url('admin.php?page=go-tournament-registration')
+            );
+            wp_redirect($redirect_url);
+            exit;
+        }
+
         // Handle bulk delete by tournament
         if (isset($_GET['action']) && $_GET['action'] === 'delete_all' && isset($_GET['tournament'])) {
             if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'gtr_delete_all_tournament')) {
@@ -218,6 +243,12 @@ class GTR_Admin {
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($_GET['tournament_deleted'])): ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Tournament deleted. <?php echo intval($_GET['tournament_deleted']); ?> registration(s) removed along with all tournament metadata.</p>
+                </div>
+            <?php endif; ?>
+
             <div class="notice notice-info">
                 <p>Create a page with the shortcode <code>[go_tournament_registration tournament="your-tournament" rounds="N"]</code> to add a registration form.</p>
                 <p>Example: <code>[go_tournament_registration tournament="summer-2024" rounds="5"]</code></p>
@@ -299,11 +330,53 @@ class GTR_Admin {
                         </a>
                     <?php endif; ?>
 
+                    <?php
+                    $delete_tournament_url = wp_nonce_url(
+                        admin_url('admin.php?page=go-tournament-registration&action=delete_tournament&tournament=' . urlencode($tournament_filter)),
+                        'gtr_delete_tournament'
+                    );
+                    ?>
+                    <a
+                        href="#"
+                        class="button button-secondary gtr-delete-tournament-btn"
+                        data-base-url="<?php echo esc_attr($delete_tournament_url); ?>"
+                        data-slug="<?php echo esc_attr($tournament_filter); ?>"
+                        data-count="<?php echo intval(count($registrations)); ?>"
+                        style="background: #6f0a0a; border-color: #6f0a0a; color: white;"
+                    >
+                        Delete Tournament
+                    </a>
+
                     <span class="gtr-total-count">
                         Tournament: <strong><?php echo esc_html($tournament_filter); ?></strong> -
                         Total: <strong><?php echo count($registrations); ?></strong> registration(s)
                     </span>
                 </div>
+
+                <script>
+                (function () {
+                    var btns = document.querySelectorAll('.gtr-delete-tournament-btn');
+                    btns.forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            var slug = btn.getAttribute('data-slug');
+                            var count = btn.getAttribute('data-count');
+                            var baseUrl = btn.getAttribute('data-base-url');
+                            var warning = 'This permanently deletes tournament "' + slug + '"' +
+                                ' (' + count + ' registration(s) plus all settings).' +
+                                ' This cannot be undone.\n\nType the tournament slug to confirm:';
+                            var typed = window.prompt(warning, '');
+                            if (typed === null) return;
+                            if (typed !== slug) {
+                                window.alert('Slug did not match. Tournament was not deleted.');
+                                return;
+                            }
+                            var sep = baseUrl.indexOf('?') === -1 ? '?' : '&';
+                            window.location.href = baseUrl + sep + 'confirm=' + encodeURIComponent(slug);
+                        });
+                    });
+                })();
+                </script>
             <?php endif; ?>
 
             <?php if (empty($registrations)): ?>
