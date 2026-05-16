@@ -61,6 +61,15 @@ if [ -n "$BUMP_VERSION" ]; then
         exit 0
     fi
 
+    # Refuse to go backwards. `sort -V` orders versions numerically; the
+    # lower of the two ends up first, so if that's the new version it's a
+    # downgrade and we bail.
+    LOWER=$(printf '%s\n%s\n' "$CURRENT_VERSION" "$BUMP_VERSION" | sort -V | head -1)
+    if [ "$LOWER" = "$BUMP_VERSION" ]; then
+        echo "Error: refusing to bump down from $CURRENT_VERSION to $BUMP_VERSION." >&2
+        exit 1
+    fi
+
     # Two canonical version locations: the plugin header and the GTR_VERSION constant.
     sed -i.bak \
         -e "s/^ \* Version: .*/ * Version: ${BUMP_VERSION}/" \
